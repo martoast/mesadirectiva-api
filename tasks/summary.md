@@ -95,11 +95,45 @@ Authorization: Bearer {token}
   "registration_deadline": "2024-06-10T23:59:59Z",
   "can_purchase": true,
   "purchase_blocked_reason": null,
+
+  // Hero Section
   "hero_title": "Annual Gala 2024",
   "hero_subtitle": "Join us for an unforgettable evening",
   "hero_image": "events/annual-gala-2024/hero-abc123.jpg",
   "hero_image_url": "https://s3.../events/annual-gala-2024/hero-abc123.jpg",
-  "about": "Full description of the event...",
+  "hero_cta_text": "Get Your Tickets",
+
+  // About Section
+  "about": "Short description text",
+  "about_title": "A Night to Remember",
+  "about_content": "<p>Rich <strong>HTML content</strong> for detailed description...</p>",
+  "about_image": "https://example.com/about-image.jpg",
+  "about_image_url": "https://example.com/about-image.jpg",
+  "about_image_position": "right",
+
+  // Rich Content Sections (all optional)
+  "highlights": [
+    { "icon": "utensils", "title": "Gourmet Dining", "description": "Five-course meal" }
+  ],
+  "schedule": [
+    { "time": "6:00 PM", "title": "Doors Open", "description": "Welcome reception" }
+  ],
+  "gallery_images": [
+    "https://example.com/image1.jpg",
+    "https://example.com/image2.jpg"
+  ],
+  "faq_items": [
+    { "question": "What is the dress code?", "answer": "Black tie optional." }
+  ],
+
+  // Venue & Contact (all optional)
+  "venue_name": "Grand Ballroom at Hotel Marriott",
+  "venue_address": "123 Main Street, City, ST 12345",
+  "venue_map_url": "https://maps.google.com/?q=...",
+  "contact_email": "events@example.com",
+  "contact_phone": "+1 (555) 123-4567",
+
+  // Relationships
   "category": CategoryResource,
   "items": [EventItemResource],
   "active_items": [EventItemResource],
@@ -121,18 +155,102 @@ Authorization: Bearer {token}
 - `deadline_passed` - Past registration deadline
 - `sold_out` - No tickets available
 
-**Hero Image Handling:**
+---
 
-The `hero_image` field supports two methods:
+### Event Landing Page Sections
+
+All landing page fields are **optional** - admins can progressively enhance their event pages.
+
+#### Hero Section
+| Field | Type | Description |
+|-------|------|-------------|
+| `hero_title` | string | Main headline (required) |
+| `hero_subtitle` | string | Secondary text (required) |
+| `hero_image` | string | Background image URL |
+| `hero_image_url` | string | Full URL for display (auto-generated) |
+| `hero_cta_text` | string | Call-to-action button text (e.g., "Get Tickets") |
+
+#### About Section
+| Field | Type | Description |
+|-------|------|-------------|
+| `about` | string | Short description (required) |
+| `about_title` | string | Section heading |
+| `about_content` | string | Rich HTML content for detailed description |
+| `about_image` | string | Image URL for about section |
+| `about_image_url` | string | Full URL for display (auto-generated) |
+| `about_image_position` | enum | `"left"` or `"right"` (default: right) |
+
+#### Highlights Section
+Feature cards to showcase key event highlights.
+```json
+"highlights": [
+  {
+    "icon": "utensils",      // Icon name (use FontAwesome or similar)
+    "title": "Gourmet Dining",
+    "description": "Five-course meal prepared by award-winning chefs"
+  }
+]
+```
+Max 10 items.
+
+#### Schedule Section
+Timeline/agenda for the event.
+```json
+"schedule": [
+  {
+    "time": "6:00 PM",
+    "title": "Doors Open",
+    "description": "Welcome reception with cocktails"
+  }
+]
+```
+Max 20 items.
+
+#### Gallery Section
+Array of image URLs for photo gallery.
+```json
+"gallery_images": [
+  "https://example.com/photo1.jpg",
+  "https://example.com/photo2.jpg"
+]
+```
+Max 20 images.
+
+#### FAQ Section
+Common questions and answers.
+```json
+"faq_items": [
+  {
+    "question": "What is the dress code?",
+    "answer": "Black tie optional. We encourage elegant attire."
+  }
+]
+```
+Max 20 items.
+
+#### Venue & Contact
+| Field | Type | Description |
+|-------|------|-------------|
+| `venue_name` | string | Venue name |
+| `venue_address` | string | Full address |
+| `venue_map_url` | string | Google Maps or similar URL |
+| `contact_email` | email | Contact email for inquiries |
+| `contact_phone` | string | Contact phone number |
+
+---
+
+### Image Handling
+
+Both `hero_image` and `about_image` support two methods:
 
 | Method | How | When to Use |
 |--------|-----|-------------|
-| **URL** | Pass `hero_image` as a URL string in create/update request | Quick setup, external images |
+| **URL** | Pass image URL in create/update request | Quick setup, external images |
 | **File Upload** | `POST /events/{slug}/hero-image` with multipart form | Custom images, auto-optimization |
 
-The API returns two fields:
-- `hero_image` - The raw value (S3 path or external URL)
-- `hero_image_url` - The full displayable URL (always use this for rendering)
+The API returns two fields for each image:
+- `hero_image` / `about_image` - The raw value (S3 path or external URL)
+- `hero_image_url` / `about_image_url` - The full displayable URL (always use this)
 
 File uploads are:
 - Resized to max 1920x1080

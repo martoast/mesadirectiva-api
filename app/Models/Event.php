@@ -27,10 +27,29 @@ class Event extends Model
         'status',
         'registration_open',
         'registration_deadline',
+        // Hero Section
         'hero_title',
         'hero_subtitle',
         'hero_image',
+        'hero_cta_text',
+        // About Section
         'about',
+        'about_title',
+        'about_content',
+        'about_image',
+        'about_image_position',
+        // Rich Content Sections
+        'highlights',
+        'schedule',
+        'gallery_images',
+        'faq_items',
+        // Venue & Contact
+        'venue_name',
+        'venue_address',
+        'venue_map_url',
+        'contact_email',
+        'contact_phone',
+        // Stripe
         'stripe_product_id',
         'stripe_price_id',
         'created_by',
@@ -45,6 +64,11 @@ class Event extends Model
             'tickets_sold' => 'integer',
             'registration_open' => 'boolean',
             'registration_deadline' => 'datetime',
+            // JSON fields for rich content
+            'highlights' => 'array',
+            'schedule' => 'array',
+            'gallery_images' => 'array',
+            'faq_items' => 'array',
         ];
     }
 

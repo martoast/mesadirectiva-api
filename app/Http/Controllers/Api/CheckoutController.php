@@ -107,8 +107,8 @@ class CheckoutController extends Controller
 
         $lineItems = $this->stripeService->buildLineItems($event, $requestedTickets, $extraItems);
 
-        $successUrl = config('app.frontend_url') . "/events/{$event->slug}/checkout-success";
-        $cancelUrl = config('app.frontend_url') . "/events/{$event->slug}";
+        $successUrl = config('app.frontend_url') . "/app/events/{$event->slug}/checkout-success";
+        $cancelUrl = config('app.frontend_url') . "/app/events/{$event->slug}";
 
         $session = $this->stripeService->createCheckoutSession(
             $event,

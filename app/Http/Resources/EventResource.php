@@ -27,18 +27,36 @@ class EventResource extends JsonResource
             'registration_deadline' => $this->registration_deadline,
             'can_purchase' => $this->canPurchase(),
             'purchase_blocked_reason' => $this->getPurchaseBlockedReason(),
+
+            // Hero Section
             'hero_title' => $this->hero_title,
             'hero_subtitle' => $this->hero_subtitle,
             'hero_image' => $this->hero_image,
-            'hero_image_url' => $this->when($this->hero_image, function () {
-                // If it's already a full URL, return as-is
-                if (str_starts_with($this->hero_image, 'http://') || str_starts_with($this->hero_image, 'https://')) {
-                    return $this->hero_image;
-                }
-                // Otherwise, get URL from S3
-                return app(ImageService::class)->getUrl($this->hero_image);
-            }),
+            'hero_image_url' => $this->getImageUrl($this->hero_image),
+            'hero_cta_text' => $this->hero_cta_text,
+
+            // About Section
             'about' => $this->about,
+            'about_title' => $this->about_title,
+            'about_content' => $this->about_content,
+            'about_image' => $this->about_image,
+            'about_image_url' => $this->getImageUrl($this->about_image),
+            'about_image_position' => $this->about_image_position,
+
+            // Rich Content Sections
+            'highlights' => $this->highlights,
+            'schedule' => $this->schedule,
+            'gallery_images' => $this->gallery_images,
+            'faq_items' => $this->faq_items,
+
+            // Venue & Contact
+            'venue_name' => $this->venue_name,
+            'venue_address' => $this->venue_address,
+            'venue_map_url' => $this->venue_map_url,
+            'contact_email' => $this->contact_email,
+            'contact_phone' => $this->contact_phone,
+
+            // Relationships
             'category' => new CategoryResource($this->whenLoaded('category')),
             'items' => EventItemResource::collection($this->whenLoaded('items')),
             'active_items' => EventItemResource::collection($this->whenLoaded('activeItems')),
@@ -47,5 +65,23 @@ class EventResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
+    }
+
+    /**
+     * Get full URL for an image field (handles both S3 paths and external URLs)
+     */
+    private function getImageUrl(?string $image): ?string
+    {
+        if (!$image) {
+            return null;
+        }
+
+        // If it's already a full URL, return as-is
+        if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
+            return $image;
+        }
+
+        // Otherwise, get URL from S3
+        return app(ImageService::class)->getUrl($image);
     }
 }

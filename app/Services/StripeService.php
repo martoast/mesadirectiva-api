@@ -93,24 +93,51 @@ class StripeService
     }
 
     /**
-     * Build line items array for checkout
+     * Build line items array for checkout using dynamic price_data
+     * This allows flexible pricing without pre-creating Stripe products
      */
     public function buildLineItems(Event $event, int $ticketQuantity, array $extraItems = []): array
     {
         $lineItems = [];
 
+        // Add tickets
         if ($ticketQuantity > 0) {
             $lineItems[] = [
-                'price' => $event->stripe_price_id,
+                'price_data' => [
+                    'currency' => 'usd',
+                    'unit_amount' => (int) ($event->price * 100), // Convert to cents
+                    'product_data' => [
+                        'name' => $event->name . ' - Ticket',
+                        'description' => "Ticket for {$event->name} on {$event->date->format('F j, Y')}",
+                        'metadata' => [
+                            'event_id' => $event->id,
+                            'event_slug' => $event->slug,
+                            'type' => 'ticket',
+                        ],
+                    ],
+                ],
                 'quantity' => $ticketQuantity,
             ];
         }
 
+        // Add extra items
         foreach ($extraItems as $extraItem) {
             $item = EventItem::find($extraItem['item_id']);
-            if ($item && $item->stripe_price_id) {
+            if ($item && $item->is_active) {
                 $lineItems[] = [
-                    'price' => $item->stripe_price_id,
+                    'price_data' => [
+                        'currency' => 'usd',
+                        'unit_amount' => (int) ($item->price * 100), // Convert to cents
+                        'product_data' => [
+                            'name' => $item->name,
+                            'description' => $item->description ?? "Add-on for {$event->name}",
+                            'metadata' => [
+                                'event_id' => $event->id,
+                                'item_id' => $item->id,
+                                'type' => 'extra_item',
+                            ],
+                        ],
+                    ],
                     'quantity' => $extraItem['quantity'],
                 ];
             }
