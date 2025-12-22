@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Http\Resources;
+
+use App\Services\ImageService;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class EventResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'description' => $this->description,
+            'date' => $this->date->format('Y-m-d'),
+            'time' => $this->time,
+            'location' => $this->location,
+            'price' => (float) $this->price,
+            'max_tickets' => $this->max_tickets,
+            'tickets_sold' => $this->tickets_sold,
+            'tickets_available' => $this->getTicketsAvailable(),
+            'status' => $this->status,
+            'registration_open' => $this->registration_open,
+            'registration_deadline' => $this->registration_deadline,
+            'can_purchase' => $this->canPurchase(),
+            'purchase_blocked_reason' => $this->getPurchaseBlockedReason(),
+            'hero_title' => $this->hero_title,
+            'hero_subtitle' => $this->hero_subtitle,
+            'hero_image' => $this->hero_image,
+            'hero_image_url' => $this->when($this->hero_image, function () {
+                // If it's already a full URL, return as-is
+                if (str_starts_with($this->hero_image, 'http://') || str_starts_with($this->hero_image, 'https://')) {
+                    return $this->hero_image;
+                }
+                // Otherwise, get URL from S3
+                return app(ImageService::class)->getUrl($this->hero_image);
+            }),
+            'about' => $this->about,
+            'category' => new CategoryResource($this->whenLoaded('category')),
+            'items' => EventItemResource::collection($this->whenLoaded('items')),
+            'active_items' => EventItemResource::collection($this->whenLoaded('activeItems')),
+            'created_by' => $this->created_by,
+            'creator' => new UserResource($this->whenLoaded('creator')),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+        ];
+    }
+}

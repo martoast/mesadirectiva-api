@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\JsonResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,15 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(JsonResponse::class);
 
-        $middleware->statefulApi();
-
-        $middleware->validateCsrfTokens(except: [
-            'webhooks/*',
-            'stripe/*',
-        ]);
-
         $middleware->alias([
             'admin' => AdminMiddleware::class,
+            'active' => EnsureUserIsActive::class,
+        ]);
+
+        $middleware->api(append: [
+            EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

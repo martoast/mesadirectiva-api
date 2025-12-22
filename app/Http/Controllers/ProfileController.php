@@ -2,35 +2,75 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
+    /**
+     * Get current user's profile
+     */
     public function show(Request $request): JsonResponse
     {
-        return response()->json($request->user());
+        return response()->json([
+            'user' => new UserResource($request->user()->load('categories')),
+        ]);
     }
 
+    /**
+     * Update current user's profile
+     */
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
-            'preferred_language' => ['sometimes', 'string', 'max:10'],
-            'address_line_1' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'address_line_2' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'city' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'state' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
-            'country' => ['sometimes', 'nullable', 'string', 'max:2'],
         ]);
 
         $request->user()->update($validated);
 
-        return response()->json($request->user()->fresh());
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => new UserResource($request->user()->fresh()->load('categories')),
+        ]);
     }
 
+    /**
+     * Update current user's password
+     */
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', Password::min(8), 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'The current password is incorrect.',
+                'errors' => [
+                    'current_password' => ['The current password is incorrect.'],
+                ],
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return response()->json([
+            'message' => 'Password updated successfully',
+        ]);
+    }
+
+    /**
+     * Delete current user's account
+     */
     public function destroy(Request $request): JsonResponse
     {
         $user = $request->user();
