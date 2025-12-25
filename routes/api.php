@@ -8,7 +8,11 @@ use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventItemController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\PublicEventController;
+use App\Http\Controllers\Api\PublicSeatingController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SeatController;
+use App\Http\Controllers\Api\TableController;
+use App\Http\Controllers\Api\TicketTierController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\ProfileController;
@@ -45,6 +49,17 @@ Route::prefix('public')->group(function () {
     Route::get('/events', [PublicEventController::class, 'index']);
     Route::get('/events/{slug}', [PublicEventController::class, 'show']);
     Route::get('/events/{slug}/availability', [PublicEventController::class, 'availability']);
+
+    // Ticket Tiers (for General Admission events)
+    Route::get('/events/{slug}/ticket-tiers', [PublicSeatingController::class, 'ticketTiers']);
+
+    // Tables & Seats (for Seated events)
+    Route::get('/events/{slug}/tables', [PublicSeatingController::class, 'tables']);
+    Route::get('/events/{slug}/tables/{tableId}/seats', [PublicSeatingController::class, 'seats']);
+
+    // Reservations
+    Route::post('/events/{slug}/reserve', [PublicSeatingController::class, 'reserve']);
+    Route::delete('/events/{slug}/reserve', [PublicSeatingController::class, 'releaseReservation']);
 });
 
 // Checkout (public but requires event to be live)
@@ -102,6 +117,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{slug}/items', [EventItemController::class, 'store']);
         Route::put('/{slug}/items/{itemId}', [EventItemController::class, 'update']);
         Route::delete('/{slug}/items/{itemId}', [EventItemController::class, 'destroy']);
+
+        // Ticket Tiers (for General Admission events)
+        Route::get('/{slug}/ticket-tiers', [TicketTierController::class, 'index']);
+        Route::post('/{slug}/ticket-tiers', [TicketTierController::class, 'store']);
+        Route::get('/{slug}/ticket-tiers/{tierId}', [TicketTierController::class, 'show']);
+        Route::put('/{slug}/ticket-tiers/{tierId}', [TicketTierController::class, 'update']);
+        Route::delete('/{slug}/ticket-tiers/{tierId}', [TicketTierController::class, 'destroy']);
+
+        // Tables (for Seated events)
+        Route::get('/{slug}/tables', [TableController::class, 'index']);
+        Route::post('/{slug}/tables', [TableController::class, 'store']);
+        Route::post('/{slug}/tables/bulk', [TableController::class, 'bulkStore']);
+        Route::get('/{slug}/tables/{tableId}', [TableController::class, 'show']);
+        Route::put('/{slug}/tables/{tableId}', [TableController::class, 'update']);
+        Route::delete('/{slug}/tables/{tableId}', [TableController::class, 'destroy']);
+
+        // Seats (for tables with sell_as_whole = false)
+        Route::get('/{slug}/tables/{tableId}/seats', [SeatController::class, 'index']);
+        Route::post('/{slug}/tables/{tableId}/seats', [SeatController::class, 'store']);
+        Route::post('/{slug}/tables/{tableId}/seats/bulk', [SeatController::class, 'bulkStore']);
+        Route::put('/{slug}/seats/{seatId}', [SeatController::class, 'update']);
+        Route::delete('/{slug}/seats/{seatId}', [SeatController::class, 'destroy']);
 
         // Event Orders
         Route::get('/{slug}/orders', [EventController::class, 'orders']);

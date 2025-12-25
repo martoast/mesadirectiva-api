@@ -14,6 +14,9 @@ class OrderItem extends Model
         'order_id',
         'item_type',
         'item_id',
+        'ticket_tier_id',
+        'seat_id',
+        'table_id',
         'item_name',
         'quantity',
         'unit_price',
@@ -39,5 +42,20 @@ class OrderItem extends Model
     public function eventItem(): BelongsTo
     {
         return $this->belongsTo(EventItem::class, 'item_id');
+    }
+
+    public function ticketTier(): BelongsTo
+    {
+        return $this->belongsTo(TicketTier::class);
+    }
+
+    public function seat(): BelongsTo
+    {
+        return $this->belongsTo(Seat::class);
+    }
+
+    public function table(): BelongsTo
+    {
+        return $this->belongsTo(Table::class);
     }
 }

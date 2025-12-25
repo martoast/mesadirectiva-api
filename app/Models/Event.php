@@ -25,6 +25,8 @@ class Event extends Model
         'max_tickets',
         'tickets_sold',
         'status',
+        'seating_type',
+        'reservation_minutes',
         'registration_open',
         'registration_deadline',
         // Hero Section
@@ -62,6 +64,7 @@ class Event extends Model
             'price' => 'decimal:2',
             'max_tickets' => 'integer',
             'tickets_sold' => 'integer',
+            'reservation_minutes' => 'integer',
             'registration_open' => 'boolean',
             'registration_deadline' => 'datetime',
             // JSON fields for rich content
@@ -130,7 +133,40 @@ class Event extends Model
         return $this->hasMany(Order::class)->where('status', 'completed');
     }
 
+    public function ticketTiers(): HasMany
+    {
+        return $this->hasMany(TicketTier::class);
+    }
+
+    public function activeTicketTiers(): HasMany
+    {
+        return $this->hasMany(TicketTier::class)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function tables(): HasMany
+    {
+        return $this->hasMany(Table::class);
+    }
+
+    public function activeTables(): HasMany
+    {
+        return $this->hasMany(Table::class)->where('is_active', true);
+    }
+
     // Business Logic
+
+    public function isSeated(): bool
+    {
+        return $this->seating_type === 'seated';
+    }
+
+    public function isGeneralAdmission(): bool
+    {
+        return $this->seating_type === 'general_admission';
+    }
 
     public function canPurchase(): bool
     {

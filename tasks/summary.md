@@ -2,7 +2,14 @@
 
 ## Overview
 
-REST API backend for an event ticketing platform. Supports event creation, ticket sales via Stripe Checkout, role-based access control with category-based permissions, and Excel-exportable reports.
+REST API backend for an event ticketing platform. Supports two mutually exclusive event types: **General Admission** (with ticket tiers and early bird pricing) and **Seated Events** (with tables and seat selection). Includes ticket sales via Stripe Checkout, role-based access control with category-based permissions, and Excel-exportable reports.
+
+### Event Types
+
+| Event Type | Description |
+|------------|-------------|
+| **General Admission** | Ticket tiers (e.g., General, VIP, Premium) with optional early bird pricing. Quantity-based purchasing. |
+| **Seated** | Tables and individual seats. Customers select specific tables or seats to purchase. Includes reservation system during checkout. |
 
 ### Tech Stack
 - **Framework:** Laravel 12 (PHP 8.4)
@@ -91,6 +98,11 @@ Authorization: Bearer {token}
   "tickets_sold": 125,
   "tickets_available": 375,
   "status": "draft|live|closed",
+
+  // Seating Configuration
+  "seating_type": "general_admission|seated",
+  "reservation_minutes": 15,
+
   "registration_open": true,
   "registration_deadline": "2024-06-10T23:59:59Z",
   "can_purchase": true,
@@ -137,6 +149,10 @@ Authorization: Bearer {token}
   "category": CategoryResource,
   "items": [EventItemResource],
   "active_items": [EventItemResource],
+  "ticket_tiers": [TicketTierResource],
+  "active_ticket_tiers": [TicketTierResource],
+  "tables": [TableResource],
+  "active_tables": [TableResource],
   "created_by": 1,
   "creator": UserResource,
   "created_at": "2024-01-01T00:00:00Z",
@@ -149,11 +165,125 @@ Authorization: Bearer {token}
 - `live` → Published and accepting orders (creates Stripe product)
 - `closed` → No longer accepting orders
 
+**Seating Types:**
+- `general_admission` (default) → Uses ticket tiers for pricing
+- `seated` → Uses tables and seats for selection
+
 **Purchase Blocked Reasons:**
 - `not_live` - Event is not published
 - `registration_closed` - Registration manually closed
 - `deadline_passed` - Past registration deadline
 - `sold_out` - No tickets available
+
+---
+
+### TicketTier (General Admission Events)
+
+Ticket pricing tiers with optional early bird discounts.
+
+```json
+{
+  "id": 1,
+  "event_id": 1,
+  "name": "VIP",
+  "description": "Front row seating with complimentary drinks",
+  "price": 200.00,
+  "early_bird_price": 150.00,
+  "early_bird_deadline": "2024-05-01T23:59:59Z",
+  "current_price": 150.00,
+  "is_early_bird": true,
+  "max_quantity": 50,
+  "quantity_sold": 10,
+  "available_quantity": 40,
+  "is_available": true,
+  "sort_order": 1,
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Pricing Logic:**
+- If `early_bird_deadline` is set and `now() < early_bird_deadline`, use `early_bird_price`
+- Otherwise, use `price`
+- `current_price` and `is_early_bird` are computed fields
+
+---
+
+### Table (Seated Events)
+
+Tables belonging to an event. Can be sold as a whole unit or have individual seats.
+
+```json
+{
+  "id": 1,
+  "event_id": 1,
+  "name": "Table 1",
+  "capacity": 8,
+  "price": 1600.00,
+  "sell_as_whole": true,
+  "status": "available|reserved|sold",
+  "position_x": 100,
+  "position_y": 200,
+  "is_active": true,
+  "seats_count": 8,
+  "available_seats_count": 0,
+  "seats": [SeatResource],
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Table Purchase Modes:**
+
+| sell_as_whole | Behavior |
+|---------------|----------|
+| `true` (default) | Entire table purchased as one unit at table price |
+| `false` | Individual seats can be purchased, each seat has its own price |
+
+---
+
+### Seat (Seated Events)
+
+Individual seats belonging to a table. Only used when `table.sell_as_whole = false`.
+
+```json
+{
+  "id": 1,
+  "table_id": 1,
+  "label": "A1",
+  "price": 200.00,
+  "status": "available|reserved|sold",
+  "position_x": 10,
+  "position_y": 20,
+  "is_active": true,
+  "table": TableResource,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+---
+
+### Reservation (Seated Events)
+
+Temporary holds during checkout process.
+
+```json
+{
+  "token": "550e8400-e29b-41d4-a716-446655440000",
+  "expires_at": "2024-01-01T12:15:00Z",
+  "tables": [TableResource],
+  "seats": [SeatResource]
+}
+```
+
+**Reservation Flow:**
+1. Customer selects tables/seats and calls reserve endpoint
+2. Items are marked as "reserved" for `reservation_minutes` (default: 15)
+3. Customer completes checkout with reservation token
+4. On payment success: items marked as "sold"
+5. On payment failure or expiration: items released back to "available"
 
 ---
 
@@ -300,12 +430,24 @@ File uploads are:
   "id": 1,
   "item_type": "ticket|extra_item",
   "item_id": null,
-  "item_name": "Annual Gala 2024 - Ticket",
+  "item_name": "Annual Gala 2024 - VIP",
   "quantity": 2,
   "unit_price": 150.00,
-  "total_price": 300.00
+  "total_price": 300.00,
+  "ticket_tier_id": 1,
+  "seat_id": null,
+  "table_id": null,
+  "ticket_tier": TicketTierResource,
+  "seat": SeatResource,
+  "table": TableResource
 }
 ```
+
+**Order Item Types:**
+- For General Admission: `ticket_tier_id` is set
+- For Seated (tables): `table_id` is set
+- For Seated (individual seats): `seat_id` is set
+- For extra items: `item_id` is set
 
 ---
 
@@ -561,23 +703,169 @@ GET /public/events/{slug}
 ```
 GET /public/events/{slug}/availability
 ```
-**Response (200):**
+
+**Response for General Admission Events (200):**
 ```json
 {
   "can_purchase": true,
   "blocked_reason": null,
-  "tickets_available": 375,
+  "seating_type": "general_admission",
   "registration_open": true,
   "registration_deadline": "2024-06-10T23:59:59Z",
+  "tickets_available": 375,
+  "tiers": [
+    {
+      "id": 1,
+      "name": "General",
+      "price": 100.00,
+      "early_bird_price": 80.00,
+      "current_price": 80.00,
+      "is_early_bird": true,
+      "early_bird_deadline": "2024-05-01T23:59:59Z",
+      "available_quantity": 150,
+      "is_available": true
+    },
+    {
+      "id": 2,
+      "name": "VIP",
+      "price": 200.00,
+      "current_price": 200.00,
+      "is_early_bird": false,
+      "available_quantity": 50,
+      "is_available": true
+    }
+  ],
   "items": [
     {
       "id": 1,
-      "name": "VIP Upgrade",
-      "price": 50.00,
+      "name": "Parking Pass",
+      "price": 25.00,
       "available": true,
-      "available_quantity": 75
+      "available_quantity": 100
     }
   ]
+}
+```
+
+**Response for Seated Events (200):**
+```json
+{
+  "can_purchase": true,
+  "blocked_reason": null,
+  "seating_type": "seated",
+  "registration_open": true,
+  "registration_deadline": "2024-06-10T23:59:59Z",
+  "tables_available": 10,
+  "tables_total": 15,
+  "seats_available": 25,
+  "seats_total": 40,
+  "items": [
+    {
+      "id": 1,
+      "name": "Valet Parking",
+      "price": 50.00,
+      "available": true,
+      "available_quantity": 50
+    }
+  ]
+}
+```
+
+---
+
+### Public Ticket Tiers (General Admission Events)
+
+#### Get Available Ticket Tiers
+```
+GET /public/events/{slug}/ticket-tiers
+```
+**Response (200):**
+```json
+{
+  "tiers": [TicketTierResource]
+}
+```
+**Errors:**
+- `400` - "This is a seated event. Use the tables endpoint instead."
+
+---
+
+### Public Tables & Seats (Seated Events)
+
+#### Get Available Tables
+```
+GET /public/events/{slug}/tables
+```
+**Response (200):**
+```json
+{
+  "tables": [TableResource (with seats)]
+}
+```
+**Errors:**
+- `400` - "This is a general admission event. Use the ticket-tiers endpoint instead."
+
+#### Get Available Seats for a Table
+```
+GET /public/events/{slug}/tables/{tableId}/seats
+```
+**Response (200):**
+```json
+{
+  "table": TableResource,
+  "seats": [SeatResource]
+}
+```
+**Errors:**
+- `400` - "This table is sold as a whole. Individual seats are not available."
+
+---
+
+### Reservations (Seated Events)
+
+#### Reserve Tables/Seats
+```
+POST /public/events/{slug}/reserve
+```
+**Request Body:**
+```json
+{
+  "tables": [1, 2],
+  "seats": [5, 6, 7]
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Reservation created successfully",
+  "reservation": {
+    "token": "550e8400-e29b-41d4-a716-446655440000",
+    "expires_at": "2024-01-01T12:15:00Z",
+    "tables": [TableResource],
+    "seats": [SeatResource]
+  }
+}
+```
+**Errors:**
+- `400` - "Reservations are only available for seated events."
+- `400` - "Table 'X' is not available"
+- `400` - "Seat 'X' is not available"
+- `400` - "Table 'X' must be purchased by individual seats" (when trying to reserve a table with `sell_as_whole=false`)
+
+#### Release Reservation
+```
+DELETE /public/events/{slug}/reserve
+```
+**Request Body:**
+```json
+{
+  "token": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+**Response (200):**
+```json
+{
+  "message": "Reservation released successfully"
 }
 ```
 
@@ -586,25 +874,56 @@ GET /public/events/{slug}/availability
 ### Checkout (Public)
 
 #### Create Checkout Session
+
+**For General Admission Events (with tiers):**
 ```
 POST /checkout/create-session
 ```
 **Request Body:**
 ```json
 {
-  "event_slug": "annual-gala-2024",
+  "event_slug": "concert-2024",
   "customer_name": "Jane Smith",
   "customer_email": "jane@example.com",
   "customer_phone": "+1234567890",
-  "tickets": 2,
+  "tiers": [
+    { "tier_id": 1, "quantity": 2 },
+    { "tier_id": 2, "quantity": 1 }
+  ],
   "extra_items": [
-    {
-      "item_id": 1,
-      "quantity": 2
-    }
+    { "item_id": 1, "quantity": 1 }
   ]
 }
 ```
+
+**For General Admission Events (legacy - single price):**
+```json
+{
+  "event_slug": "concert-2024",
+  "customer_name": "Jane Smith",
+  "customer_email": "jane@example.com",
+  "customer_phone": "+1234567890",
+  "tickets": 3,
+  "extra_items": []
+}
+```
+
+**For Seated Events:**
+```json
+{
+  "event_slug": "gala-2024",
+  "customer_name": "Jane Smith",
+  "customer_email": "jane@example.com",
+  "customer_phone": "+1234567890",
+  "tables": [1],
+  "seats": [5, 6, 7],
+  "reservation_token": "550e8400-e29b-41d4-a716-446655440000",
+  "extra_items": [
+    { "item_id": 1, "quantity": 2 }
+  ]
+}
+```
+
 **Response (200):**
 ```json
 {
@@ -613,10 +932,13 @@ POST /checkout/create-session
   "order_number": "ORD-240615-A1B2"
 }
 ```
+
 **Errors:**
 - `422` - Cannot purchase (with `reason` field)
 - `422` - Not enough tickets available
 - `422` - Item not available
+- `422` - Invalid or expired reservation
+- `422` - Ticket tier not available
 
 ---
 
@@ -625,9 +947,14 @@ POST /checkout/create-session
 POST /webhooks/stripe
 ```
 Handles Stripe events:
-- `checkout.session.completed` - Marks order as completed, increments sold counts, sends confirmation email
+- `checkout.session.completed` - Marks order as completed, updates inventory:
+  - For General Admission: Increments tier `quantity_sold`
+  - For Seated: Marks tables/seats as "sold", completes reservations
+  - Sends confirmation email
 - `payment_intent.payment_failed` - Marks order as failed
-- `charge.refunded` - Marks order as refunded, decrements sold counts
+- `charge.refunded` - Marks order as refunded:
+  - For General Admission: Decrements tier `quantity_sold`
+  - For Seated: Releases tables/seats back to "available"
 
 ---
 
@@ -810,6 +1137,8 @@ Authorization: Bearer {token}
   "location": "Event Venue",
   "price": 100.00,
   "max_tickets": 200,
+  "seating_type": "general_admission",
+  "reservation_minutes": 15,
   "hero_title": "Welcome to New Event",
   "hero_subtitle": "Don't miss this amazing opportunity",
   "hero_image": "https://example.com/image.jpg",
@@ -857,6 +1186,8 @@ Authorization: Bearer {token}
   "location": "New Venue",
   "price": 125.00,
   "max_tickets": 250,
+  "seating_type": "seated",
+  "reservation_minutes": 20,
   "hero_title": "Updated Title",
   "hero_subtitle": "Updated subtitle",
   "hero_image": "https://example.com/new-image.jpg",
@@ -981,6 +1312,310 @@ Authorization: Bearer {token}
   }
 }
 ```
+
+---
+
+### Ticket Tiers (Protected - General Admission Events)
+
+#### List Ticket Tiers
+```
+GET /events/{slug}/ticket-tiers
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "tiers": [TicketTierResource]
+}
+```
+
+#### Create Ticket Tier
+```
+POST /events/{slug}/ticket-tiers
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "name": "VIP",
+  "description": "Front row seating with drinks",
+  "price": 200.00,
+  "early_bird_price": 150.00,
+  "early_bird_deadline": "2024-05-01T23:59:59Z",
+  "max_quantity": 50,
+  "sort_order": 1,
+  "is_active": true
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Ticket tier created successfully",
+  "tier": TicketTierResource
+}
+```
+
+#### Get Ticket Tier
+```
+GET /events/{slug}/ticket-tiers/{tierId}
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "tier": TicketTierResource
+}
+```
+
+#### Update Ticket Tier
+```
+PUT /events/{slug}/ticket-tiers/{tierId}
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "name": "Updated VIP",
+  "price": 250.00,
+  "is_active": true
+}
+```
+**Response (200):**
+```json
+{
+  "message": "Ticket tier updated successfully",
+  "tier": TicketTierResource
+}
+```
+
+#### Delete Ticket Tier
+```
+DELETE /events/{slug}/ticket-tiers/{tierId}
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "message": "Ticket tier deleted successfully"
+}
+```
+
+---
+
+### Tables (Protected - Seated Events)
+
+#### List Tables
+```
+GET /events/{slug}/tables
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "tables": [TableResource (with seats)]
+}
+```
+
+#### Create Table
+```
+POST /events/{slug}/tables
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "name": "Table 1",
+  "capacity": 8,
+  "price": 1600.00,
+  "sell_as_whole": true,
+  "position_x": 100,
+  "position_y": 200,
+  "is_active": true
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Table created successfully",
+  "table": TableResource
+}
+```
+
+#### Bulk Create Tables
+```
+POST /events/{slug}/tables/bulk
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "tables": [
+    {
+      "name": "Table 1",
+      "capacity": 8,
+      "price": 1600.00,
+      "sell_as_whole": true
+    },
+    {
+      "name": "Table 2",
+      "capacity": 6,
+      "price": 1200.00,
+      "sell_as_whole": false
+    }
+  ]
+}
+```
+**Response (201):**
+```json
+{
+  "message": "3 tables created successfully",
+  "tables": [TableResource]
+}
+```
+
+#### Get Table
+```
+GET /events/{slug}/tables/{tableId}
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "table": TableResource (with seats)
+}
+```
+
+#### Update Table
+```
+PUT /events/{slug}/tables/{tableId}
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "name": "VIP Table 1",
+  "price": 2000.00,
+  "is_active": true
+}
+```
+**Response (200):**
+```json
+{
+  "message": "Table updated successfully",
+  "table": TableResource
+}
+```
+
+#### Delete Table
+```
+DELETE /events/{slug}/tables/{tableId}
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "message": "Table deleted successfully"
+}
+```
+**Errors:**
+- `422` - "Cannot delete table that has been sold"
+
+---
+
+### Seats (Protected - Seated Events)
+
+#### List Seats for Table
+```
+GET /events/{slug}/tables/{tableId}/seats
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "seats": [SeatResource]
+}
+```
+
+#### Create Seat
+```
+POST /events/{slug}/tables/{tableId}/seats
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "label": "A1",
+  "price": 200.00,
+  "position_x": 10,
+  "position_y": 20,
+  "is_active": true
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Seat created successfully",
+  "seat": SeatResource
+}
+```
+
+#### Bulk Create Seats
+```
+POST /events/{slug}/tables/{tableId}/seats/bulk
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "seats": [
+    { "label": "A1", "price": 200.00 },
+    { "label": "A2", "price": 200.00 },
+    { "label": "A3", "price": 250.00 }
+  ]
+}
+```
+**Response (201):**
+```json
+{
+  "message": "3 seats created successfully",
+  "seats": [SeatResource]
+}
+```
+
+#### Update Seat
+```
+PUT /events/{slug}/seats/{seatId}
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "label": "A1-VIP",
+  "price": 300.00,
+  "is_active": true
+}
+```
+**Response (200):**
+```json
+{
+  "message": "Seat updated successfully",
+  "seat": SeatResource
+}
+```
+
+#### Delete Seat
+```
+DELETE /events/{slug}/seats/{seatId}
+Authorization: Bearer {token}
+```
+**Response (200):**
+```json
+{
+  "message": "Seat deleted successfully"
+}
+```
+**Errors:**
+- `422` - "Cannot delete seat that has been sold"
 
 ---
 
@@ -1281,18 +1916,47 @@ Authorization: Bearer {token}
 
 ---
 
-## Checkout Flow
+## Checkout Flows
 
-1. **Frontend** calls `GET /public/events/{slug}/availability` to check if purchase is possible
-2. **Frontend** collects customer info and calls `POST /checkout/create-session`
-3. **API** creates pending order in database
-4. **API** creates Stripe Checkout Session and returns `checkout_url`
-5. **Frontend** redirects customer to Stripe Checkout
-6. **Customer** completes payment on Stripe
-7. **Stripe** sends webhook to `POST /webhooks/stripe`
-8. **API** marks order as completed, increments sold counts, sends confirmation email
-9. **Stripe** redirects customer to `{FRONTEND_URL}/events/{slug}/checkout-success?session_id={id}`
-10. **Frontend** can fetch order details using the order number
+### General Admission Checkout Flow
+
+1. **Frontend** calls `GET /public/events/{slug}/availability` to get available tiers
+2. **Frontend** displays tier options with current prices (early bird or regular)
+3. **Customer** selects quantities for each tier
+4. **Frontend** calls `POST /checkout/create-session` with `tiers` array
+5. **API** validates tier availability and creates pending order
+6. **API** creates Stripe Checkout Session with line items for each tier
+7. **Customer** completes payment on Stripe
+8. **Stripe** sends webhook; API increments `quantity_sold` for each tier
+9. **Customer** redirected to success page
+
+### Seated Event Checkout Flow
+
+1. **Frontend** calls `GET /public/events/{slug}/tables` to get seating map
+2. **Customer** selects tables (whole) or individual seats
+3. **Frontend** calls `POST /public/events/{slug}/reserve` to hold selections
+4. **API** returns `reservation_token` valid for `reservation_minutes`
+5. **Customer** enters contact info
+6. **Frontend** calls `POST /checkout/create-session` with `tables`, `seats`, and `reservation_token`
+7. **API** validates reservation and creates Stripe Checkout Session
+8. **Customer** completes payment on Stripe
+9. **Stripe** sends webhook; API marks tables/seats as "sold"
+10. **If payment fails or reservation expires:** items released back to "available"
+
+---
+
+## Scheduled Tasks
+
+### Expire Reservations
+```
+php artisan reservations:expire
+```
+Runs every minute via Laravel scheduler. Releases expired seat/table reservations back to "available" status.
+
+**Setup (server cron):**
+```bash
+* * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
+```
 
 ---
 
@@ -1331,6 +1995,66 @@ VITE_STRIPE_KEY=pk_test_xxx
 
 # Google OAuth (if implementing direct OAuth)
 VITE_GOOGLE_CLIENT_ID=xxx
+```
+
+---
+
+## Database Schema Overview
+
+```
+┌─────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│   users     │      │    categories    │      │     events      │
+├─────────────┤      ├──────────────────┤      ├─────────────────┤
+│ id          │◄──┐  │ id               │◄──┐  │ id              │
+│ name        │   │  │ name             │   │  │ slug            │
+│ email       │   │  │ slug             │   │  │ name            │
+│ role        │   │  │ color            │   │  │ seating_type    │
+│ is_active   │   │  └──────────────────┘   │  │ status          │
+└─────────────┘   │                          │  │ category_id ────┘
+       │          │                          │  │ created_by ─────┘
+       │          │                          │  └─────────────────┘
+       │          │                          │           │
+       └──────────┴──────────────────────────┘           │
+                                                         │
+    ┌────────────────────────────────────────────────────┴───────────────────────────────────┐
+    │                                                                                         │
+    ▼                                    ▼                                    ▼               ▼
+┌─────────────────┐              ┌─────────────────┐              ┌─────────────────┐   ┌──────────────┐
+│  ticket_tiers   │              │     tables      │              │  event_items    │   │    orders    │
+├─────────────────┤              ├─────────────────┤              ├─────────────────┤   ├──────────────┤
+│ id              │              │ id              │              │ id              │   │ id           │
+│ event_id        │              │ event_id        │              │ event_id        │   │ event_id     │
+│ name            │              │ name            │              │ name            │   │ order_number │
+│ price           │              │ capacity        │              │ price           │   │ status       │
+│ early_bird_price│              │ price           │              │ max_quantity    │   │ total        │
+│ early_bird_deadline│           │ sell_as_whole   │              └─────────────────┘   └──────────────┘
+│ max_quantity    │              │ status          │                                            │
+│ quantity_sold   │              └─────────────────┘                                            │
+└─────────────────┘                      │                                                      │
+                                         │                                                      │
+                                         ▼                                                      ▼
+                                 ┌─────────────────┐                                    ┌──────────────┐
+                                 │     seats       │                                    │ order_items  │
+                                 ├─────────────────┤                                    ├──────────────┤
+                                 │ id              │                                    │ id           │
+                                 │ table_id        │                                    │ order_id     │
+                                 │ label           │                                    │ item_type    │
+                                 │ price           │◄───────────────────────────────────│ seat_id      │
+                                 │ status          │                                    │ table_id     │
+                                 └─────────────────┘                                    │ ticket_tier_id│
+                                         │                                              └──────────────┘
+                                         │
+                     ┌───────────────────┴───────────────────┐
+                     ▼                                       ▼
+             ┌─────────────────┐                     ┌─────────────────┐
+             │seat_reservations│                     │table_reservations│
+             ├─────────────────┤                     ├─────────────────┤
+             │ id              │                     │ id              │
+             │ seat_id         │                     │ table_id        │
+             │ session_token   │                     │ session_token   │
+             │ expires_at      │                     │ expires_at      │
+             │ order_id        │                     │ order_id        │
+             └─────────────────┘                     └─────────────────┘
 ```
 
 ---

@@ -147,6 +147,37 @@ class StripeService
     }
 
     /**
+     * Create Checkout Session with pre-built line items
+     * Used for tier-based and seated event checkouts
+     */
+    public function createCheckoutSessionWithLineItems(
+        Order $order,
+        array $lineItems,
+        string $successUrl,
+        string $cancelUrl,
+        array $metadata = []
+    ): Session {
+        return Session::create([
+            'mode' => 'payment',
+            'success_url' => $successUrl . '?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => $cancelUrl,
+            'customer_email' => $order->customer_email,
+            'line_items' => $lineItems,
+            'metadata' => array_merge([
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'event_id' => $order->event_id,
+            ], $metadata),
+            'payment_intent_data' => [
+                'metadata' => array_merge([
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                ], $metadata),
+            ],
+        ]);
+    }
+
+    /**
      * Verify webhook signature
      */
     public function constructWebhookEvent(string $payload, string $signature): \Stripe\Event
