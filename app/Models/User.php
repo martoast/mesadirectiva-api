@@ -54,9 +54,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     // Relationships
 
-    public function categories(): BelongsToMany
+    public function groups(): BelongsToMany
     {
-        return $this->belongsToMany(Category::class)
+        return $this->belongsToMany(Group::class)
             ->withPivot('permission')
             ->withTimestamps();
     }
@@ -66,9 +66,9 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Event::class, 'created_by');
     }
 
-    public function createdCategories(): HasMany
+    public function createdGroups(): HasMany
     {
-        return $this->hasMany(Category::class, 'created_by');
+        return $this->hasMany(Group::class, 'created_by');
     }
 
     // Role Helpers
@@ -88,36 +88,36 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'viewer';
     }
 
-    // Category Permission Helpers
+    // Group Permission Helpers
 
-    public function hasAccessToCategory(int $categoryId): bool
+    public function hasAccessToGroup(int $groupId): bool
     {
         if ($this->isSuperAdmin()) {
             return true;
         }
 
-        return $this->categories()->where('category_id', $categoryId)->exists();
+        return $this->groups()->where('group_id', $groupId)->exists();
     }
 
-    public function getCategoryPermission(int $categoryId): ?string
+    public function getGroupPermission(int $groupId): ?string
     {
         if ($this->isSuperAdmin()) {
             return 'manage';
         }
 
-        $category = $this->categories()->where('category_id', $categoryId)->first();
-        return $category?->pivot?->permission;
+        $group = $this->groups()->where('group_id', $groupId)->first();
+        return $group?->pivot?->permission;
     }
 
-    public function canEditCategory(int $categoryId): bool
+    public function canEditGroup(int $groupId): bool
     {
-        $permission = $this->getCategoryPermission($categoryId);
+        $permission = $this->getGroupPermission($groupId);
         return in_array($permission, ['edit', 'manage']);
     }
 
-    public function canManageCategory(int $categoryId): bool
+    public function canManageGroup(int $groupId): bool
     {
-        return $this->getCategoryPermission($categoryId) === 'manage';
+        return $this->getGroupPermission($groupId) === 'manage';
     }
 
     // Address Helper

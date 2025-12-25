@@ -16,7 +16,7 @@ class ProfileController extends Controller
     public function show(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => new UserResource($request->user()->load('categories')),
+            'user' => new UserResource($request->user()->load('groups')),
         ]);
     }
 
@@ -34,7 +34,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => new UserResource($request->user()->fresh()->load('categories')),
+            'user' => new UserResource($request->user()->fresh()->load('groups')),
         ]);
     }
 

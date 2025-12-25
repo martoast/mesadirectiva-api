@@ -2,7 +2,7 @@
 
 ## Overview
 
-REST API backend for an event ticketing platform. Supports two mutually exclusive event types: **General Admission** (with ticket tiers and early bird pricing) and **Seated Events** (with tables and seat selection). Includes ticket sales via Stripe Checkout, role-based access control with category-based permissions, and Excel-exportable reports.
+REST API backend for an event ticketing platform. Supports two mutually exclusive event types: **General Admission** (with ticket tiers and early bird pricing) and **Seated Events** (with tables and seat selection). Includes ticket sales via Stripe Checkout, role-based access control with group-based permissions, and Excel-exportable reports.
 
 ### Event Types
 
@@ -36,15 +36,15 @@ Authorization: Bearer {token}
 
 | Role | Description |
 |------|-------------|
-| `super_admin` | Full access to all events, users, categories, and settings |
-| `admin` | Access only to events within assigned categories |
-| `viewer` | Read-only access to events within assigned categories |
+| `super_admin` | Full access to all events, users, groups, and settings |
+| `admin` | Access only to events within assigned groups |
+| `viewer` | Read-only access to events within assigned groups |
 
-### Category Permissions (for admin/viewer roles)
+### Group Permissions (for admin/viewer roles)
 | Permission | Capabilities |
 |------------|-------------|
-| `view` | Read-only access to category's events |
-| `edit` | Can create/update events in category |
+| `view` | Read-only access to group's events |
+| `edit` | Can create/update events in group |
 | `manage` | Full control including delete |
 
 ---
@@ -62,13 +62,13 @@ Authorization: Bearer {token}
   "role": "super_admin|admin|viewer",
   "is_active": true,
   "email_verified_at": "2024-01-01T00:00:00Z",
-  "categories": [CategoryResource],
+  "groups": [GroupResource],
   "created_at": "2024-01-01T00:00:00Z",
   "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
-### Category
+### Group
 ```json
 {
   "id": 1,
@@ -146,7 +146,7 @@ Authorization: Bearer {token}
   "contact_phone": "+1 (555) 123-4567",
 
   // Relationships
-  "category": CategoryResource,
+  "group": GroupResource,
   "items": [EventItemResource],
   "active_items": [EventItemResource],
   "ticket_tiers": [TicketTierResource],
@@ -514,7 +514,7 @@ Authorization: Bearer {token}
 **Response (200):**
 ```json
 {
-  "user": UserResource (with categories)
+  "user": UserResource (with groups)
 }
 ```
 
@@ -591,7 +591,7 @@ Authorization: Bearer {token}
     "avatar": null,
     "role": "admin",
     "is_active": true,
-    "categories": [
+    "groups": [
       {
         "id": 1,
         "name": "Primaria",
@@ -671,7 +671,7 @@ GET /public/events
 **Query Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `category` | string | Filter by category slug |
+| `group` | string | Filter by group slug |
 | `per_page` | int | Items per page (default: 12) |
 | `page` | int | Page number |
 
@@ -695,7 +695,7 @@ GET /public/events/{slug}
 **Response (200):**
 ```json
 {
-  "event": EventResource (with category, activeItems)
+  "event": EventResource (with group, activeItems)
 }
 ```
 
@@ -1011,56 +1011,56 @@ Authorization: Bearer {token}
 
 ---
 
-### Categories (Protected)
+### Groups (Protected)
 
-#### List Categories
+#### List Groups
 ```
-GET /categories
+GET /groups
 Authorization: Bearer {token}
 ```
 **Response (200):**
 ```json
 {
-  "categories": [CategoryResource (with events_count)]
+  "groups": [GroupResource (with events_count)]
 }
 ```
 
-#### Create Category (super_admin only)
+#### Create Group (super_admin only)
 ```
-POST /categories
+POST /groups
 Authorization: Bearer {token}
 ```
 **Request Body:**
 ```json
 {
-  "name": "New Category",
-  "description": "Category description",
+  "name": "New Group",
+  "description": "Group description",
   "color": "#3b82f6"
 }
 ```
 **Response (201):**
 ```json
 {
-  "message": "Category created successfully",
-  "category": CategoryResource
+  "message": "Group created successfully",
+  "group": GroupResource
 }
 ```
 
-#### Get Category
+#### Get Group
 ```
-GET /categories/{id}
+GET /groups/{id}
 Authorization: Bearer {token}
 ```
 **Response (200):**
 ```json
 {
-  "category": CategoryResource (with events_count)
+  "group": GroupResource (with events_count)
 }
 ```
 
-#### Update Category (super_admin only)
+#### Update Group (super_admin only)
 ```
-PUT /categories/{id}
+PUT /groups/{id}
 Authorization: Bearer {token}
 ```
 **Request Body:**
@@ -1074,20 +1074,20 @@ Authorization: Bearer {token}
 **Response (200):**
 ```json
 {
-  "message": "Category updated successfully",
-  "category": CategoryResource
+  "message": "Group updated successfully",
+  "group": GroupResource
 }
 ```
 
-#### Delete Category (super_admin only)
+#### Delete Group (super_admin only)
 ```
-DELETE /categories/{id}
+DELETE /groups/{id}
 Authorization: Bearer {token}
 ```
 **Response (200):**
 ```json
 {
-  "message": "Category deleted successfully"
+  "message": "Group deleted successfully"
 }
 ```
 
@@ -1104,14 +1104,14 @@ Authorization: Bearer {token}
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `status` | string | Filter by status (draft/live/closed) |
-| `category_id` | int | Filter by category |
+| `group_id` | int | Filter by group |
 | `per_page` | int | Items per page (default: 15) |
 | `page` | int | Page number |
 
 **Response (200):**
 ```json
 {
-  "events": [EventResource (with category)],
+  "events": [EventResource (with group)],
   "meta": {
     "current_page": 1,
     "last_page": 3,
@@ -1129,7 +1129,7 @@ Authorization: Bearer {token}
 **Request Body:**
 ```json
 {
-  "category_id": 1,
+  "group_id": 1,
   "name": "New Event",
   "description": "Event description",
   "date": "2024-08-15",
@@ -1711,7 +1711,7 @@ Authorization: Bearer {token}
 **Response (200):**
 ```json
 {
-  "users": [UserResource (with categories)],
+  "users": [UserResource (with groups)],
   "meta": {
     "current_page": 1,
     "last_page": 2,
@@ -1752,7 +1752,7 @@ Authorization: Bearer {token}
 **Response (200):**
 ```json
 {
-  "user": UserResource (with categories)
+  "user": UserResource (with groups)
 }
 ```
 
@@ -1793,15 +1793,15 @@ Sets `is_active` to false (doesn't actually delete).
 }
 ```
 
-#### Assign Categories
+#### Assign Groups
 ```
-POST /users/{id}/categories
+POST /users/{id}/groups
 Authorization: Bearer {token}
 ```
 **Request Body:**
 ```json
 {
-  "categories": [
+  "groups": [
     { "id": 1, "permission": "edit" },
     { "id": 2, "permission": "view" },
     { "id": 3, "permission": "manage" }
@@ -1811,8 +1811,8 @@ Authorization: Bearer {token}
 **Response (200):**
 ```json
 {
-  "message": "Categories assigned successfully",
-  "user": UserResource (with categories)
+  "message": "Groups assigned successfully",
+  "user": UserResource (with groups)
 }
 ```
 
@@ -1842,7 +1842,7 @@ Authorization: Bearer {token}
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `event_id` | int | Filter by event |
-| `category_id` | int | Filter by category |
+| `group_id` | int | Filter by group |
 | `date_from` | date | Start date (YYYY-MM-DD) |
 | `date_to` | date | End date (YYYY-MM-DD) |
 | `search` | string | Search customer name/email/order number |
@@ -1876,7 +1876,7 @@ Authorization: Bearer {token}
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `event_id` | int | Filter by event |
-| `category_id` | int | Filter by category |
+| `group_id` | int | Filter by group |
 | `date_from` | date | Start date |
 | `date_to` | date | End date |
 | `status` | string | Filter by status |
@@ -2003,14 +2003,14 @@ VITE_GOOGLE_CLIENT_ID=xxx
 
 ```
 ┌─────────────┐      ┌──────────────────┐      ┌─────────────────┐
-│   users     │      │    categories    │      │     events      │
+│   users     │      │     groups       │      │     events      │
 ├─────────────┤      ├──────────────────┤      ├─────────────────┤
 │ id          │◄──┐  │ id               │◄──┐  │ id              │
 │ name        │   │  │ name             │   │  │ slug            │
 │ email       │   │  │ slug             │   │  │ name            │
 │ role        │   │  │ color            │   │  │ seating_type    │
 │ is_active   │   │  └──────────────────┘   │  │ status          │
-└─────────────┘   │                          │  │ category_id ────┘
+└─────────────┘   │                          │  │ group_id ────┘
        │          │                          │  │ created_by ─────┘
        │          │                          │  └─────────────────┘
        │          │                          │           │
@@ -2068,7 +2068,7 @@ After running seeders:
 
 ---
 
-## Default Categories
+## Default Groups
 
 After running seeders:
 | Name | Slug | Color |

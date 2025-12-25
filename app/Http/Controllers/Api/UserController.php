@@ -14,7 +14,7 @@ class UserController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = User::with('categories')
+        $query = User::with('groups')
             ->orderBy('name');
 
         if ($request->has('role')) {
@@ -61,7 +61,7 @@ class UserController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $user = User::with('categories')->findOrFail($id);
+        $user = User::with('groups')->findOrFail($id);
 
         return response()->json([
             'user' => new UserResource($user),
@@ -90,7 +90,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'User updated successfully',
-            'user' => new UserResource($user->load('categories')),
+            'user' => new UserResource($user->load('groups')),
         ]);
     }
 
@@ -106,26 +106,26 @@ class UserController extends Controller
         ]);
     }
 
-    public function assignCategories(Request $request, int $id): JsonResponse
+    public function assignGroups(Request $request, int $id): JsonResponse
     {
         $user = User::findOrFail($id);
 
         $request->validate([
-            'categories' => 'required|array',
-            'categories.*.id' => 'required|exists:categories,id',
-            'categories.*.permission' => 'required|in:view,edit,manage',
+            'groups' => 'required|array',
+            'groups.*.id' => 'required|exists:groups,id',
+            'groups.*.permission' => 'required|in:view,edit,manage',
         ]);
 
         $syncData = [];
-        foreach ($request->categories as $category) {
-            $syncData[$category['id']] = ['permission' => $category['permission']];
+        foreach ($request->groups as $group) {
+            $syncData[$group['id']] = ['permission' => $group['permission']];
         }
 
-        $user->categories()->sync($syncData);
+        $user->groups()->sync($syncData);
 
         return response()->json([
-            'message' => 'Categories assigned successfully',
-            'user' => new UserResource($user->load('categories')),
+            'message' => 'Groups assigned successfully',
+            'user' => new UserResource($user->load('groups')),
         ]);
     }
 

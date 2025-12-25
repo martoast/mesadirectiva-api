@@ -100,15 +100,15 @@ class ReportService
 
         $query = Order::whereIn('event_id', $eventIds)
             ->where('status', 'completed')
-            ->with('event:id,name,slug,category_id', 'event.category:id,name', 'items');
+            ->with('event:id,name,slug,group_id', 'event.group:id,name', 'items');
 
         if (!empty($filters['event_id'])) {
             $query->where('event_id', $filters['event_id']);
         }
 
-        if (!empty($filters['category_id'])) {
+        if (!empty($filters['group_id'])) {
             $query->whereHas('event', function ($q) use ($filters) {
-                $q->where('category_id', $filters['category_id']);
+                $q->where('group_id', $filters['group_id']);
             });
         }
 

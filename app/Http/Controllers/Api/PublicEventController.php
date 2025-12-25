@@ -19,12 +19,12 @@ class PublicEventController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Event::live()
-            ->with('category')
+            ->with('group')
             ->orderBy('date', 'asc');
 
-        if ($request->has('category')) {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->where('slug', $request->category);
+        if ($request->has('group')) {
+            $query->whereHas('group', function ($q) use ($request) {
+                $q->where('slug', $request->group);
             });
         }
 
@@ -49,7 +49,7 @@ class PublicEventController extends Controller
     {
         $event = Event::where('slug', $slug)
             ->live()
-            ->with(['category', 'activeItems'])
+            ->with(['group', 'activeItems'])
             ->firstOrFail();
 
         return response()->json([

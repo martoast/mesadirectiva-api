@@ -26,7 +26,7 @@ class ReportController extends Controller
     {
         $filters = $request->only([
             'event_id',
-            'category_id',
+            'group_id',
             'date_from',
             'date_to',
             'search',
@@ -51,7 +51,7 @@ class ReportController extends Controller
     {
         $filters = $request->only([
             'event_id',
-            'category_id',
+            'group_id',
             'date_from',
             'date_to',
             'search',
@@ -73,7 +73,7 @@ class ReportController extends Controller
     {
         $filters = $request->only([
             'event_id',
-            'category_id',
+            'group_id',
             'date_from',
             'date_to',
             'status',
@@ -95,7 +95,7 @@ class ReportController extends Controller
     {
         $filters = $request->only([
             'event_id',
-            'category_id',
+            'group_id',
             'date_from',
             'date_to',
             'status',

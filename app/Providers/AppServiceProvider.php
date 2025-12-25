@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use App\Models\Category;
 use App\Models\Event;
-use App\Policies\CategoryPolicy;
+use App\Models\Group;
 use App\Policies\EventPolicy;
+use App\Policies\GroupPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Date;
@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register policies
         Gate::policy(Event::class, EventPolicy::class);
-        Gate::policy(Category::class, CategoryPolicy::class);
+        Gate::policy(Group::class, GroupPolicy::class);
 
         // Gate for user management (super_admin only)
         Gate::define('manage-users', function ($user) {

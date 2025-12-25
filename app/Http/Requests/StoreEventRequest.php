@@ -15,7 +15,7 @@ class StoreEventRequest extends FormRequest
     {
         return [
             // Basic Info (required)
-            'category_id' => 'required|exists:categories,id',
+            'group_id' => 'required|exists:groups,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'date' => 'required|date|after_or_equal:today',

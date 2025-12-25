@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EventController;
@@ -94,8 +94,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/events/{slug}/stats', [DashboardController::class, 'eventStats']);
     });
 
-    // Categories
-    Route::apiResource('categories', CategoryController::class);
+    // Groups
+    Route::apiResource('groups', GroupController::class);
 
     // Events
     Route::prefix('events')->group(function () {
@@ -151,7 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/users/{id}', [UserController::class, 'show']);
         Route::put('/users/{id}', [UserController::class, 'update']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
-        Route::post('/users/{id}/categories', [UserController::class, 'assignCategories']);
+        Route::post('/users/{id}/groups', [UserController::class, 'assignGroups']);
         Route::post('/users/{id}/toggle-active', [UserController::class, 'toggleActive']);
     });
 

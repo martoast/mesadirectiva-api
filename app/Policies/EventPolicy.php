@@ -24,11 +24,11 @@ class EventPolicy
             return true;
         }
 
-        if (!$event->category_id) {
+        if (!$event->group_id) {
             return false;
         }
 
-        return $user->hasAccessToCategory($event->category_id);
+        return $user->hasAccessToGroup($event->group_id);
     }
 
     /**
@@ -40,7 +40,7 @@ class EventPolicy
             return true;
         }
 
-        return $user->categories()
+        return $user->groups()
             ->wherePivotIn('permission', ['edit', 'manage'])
             ->exists();
     }
@@ -54,11 +54,11 @@ class EventPolicy
             return true;
         }
 
-        if (!$event->category_id) {
+        if (!$event->group_id) {
             return false;
         }
 
-        return $user->canEditCategory($event->category_id);
+        return $user->canEditGroup($event->group_id);
     }
 
     /**
@@ -70,10 +70,10 @@ class EventPolicy
             return true;
         }
 
-        if (!$event->category_id) {
+        if (!$event->group_id) {
             return false;
         }
 
-        return $user->canManageCategory($event->category_id);
+        return $user->canManageGroup($event->group_id);
     }
 }

@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Category;
 use App\Models\Event;
+use App\Models\Group;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -12,11 +12,11 @@ class EventSeeder extends Seeder
     public function run(): void
     {
         $admin = User::where('role', 'super_admin')->first();
-        $generalCategory = Category::where('slug', 'general')->first();
-        $primariaCategory = Category::where('slug', 'primaria')->first();
+        $generalGroup = Group::where('slug', 'general')->first();
+        $primariaGroup = Group::where('slug', 'primaria')->first();
 
-        if (!$admin || !$generalCategory) {
-            $this->command->warn('Please run AdminUserSeeder and CategorySeeder first.');
+        if (!$admin || !$generalGroup) {
+            $this->command->warn('Please run AdminUserSeeder and GroupSeeder first.');
             return;
         }
 
@@ -24,7 +24,7 @@ class EventSeeder extends Seeder
         // EVENT 1: General Admission with Ticket Tiers
         // ========================================
         $gaEvent = Event::create([
-            'category_id' => $generalCategory->id,
+            'group_id' => $generalGroup->id,
             'name' => 'Spring Concert 2025',
             'description' => 'Join us for an amazing night of music featuring local bands and artists.',
             'date' => now()->addMonths(1)->format('Y-m-d'),
@@ -151,7 +151,7 @@ class EventSeeder extends Seeder
         // EVENT 2: Seated Event (Gala Dinner)
         // ========================================
         $seatedEvent = Event::create([
-            'category_id' => $primariaCategory?->id ?? $generalCategory->id,
+            'group_id' => $primariaGroup?->id ?? $generalGroup->id,
             'name' => 'Annual School Gala 2025',
             'description' => 'Join us for an unforgettable evening celebrating our school community.',
             'date' => now()->addMonths(2)->format('Y-m-d'),
@@ -302,7 +302,7 @@ class EventSeeder extends Seeder
         // EVENT 3: Draft General Admission Event
         // ========================================
         $draftEvent = Event::create([
-            'category_id' => $generalCategory->id,
+            'group_id' => $generalGroup->id,
             'name' => 'Summer Festival 2025',
             'description' => 'Coming soon - our biggest outdoor festival yet!',
             'date' => now()->addMonths(4)->format('Y-m-d'),

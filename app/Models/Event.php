@@ -15,7 +15,7 @@ class Event extends Model
 
     protected $fillable = [
         'slug',
-        'category_id',
+        'group_id',
         'name',
         'description',
         'date',
@@ -103,9 +103,9 @@ class Event extends Model
 
     // Relationships
 
-    public function category(): BelongsTo
+    public function group(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Group::class);
     }
 
     public function creator(): BelongsTo
@@ -233,8 +233,8 @@ class Event extends Model
             return $query;
         }
 
-        $categoryIds = $user->categories()->pluck('categories.id');
+        $groupIds = $user->groups()->pluck('groups.id');
 
-        return $query->whereIn('category_id', $categoryIds);
+        return $query->whereIn('group_id', $groupIds);
     }
 }

@@ -23,15 +23,15 @@ class EventController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Event::accessibleBy($request->user())
-            ->with('category')
+            ->with('group')
             ->orderBy('date', 'desc');
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('category_id')) {
-            $query->where('category_id', $request->category_id);
+        if ($request->has('group_id')) {
+            $query->where('group_id', $request->group_id);
         }
 
         $events = $query->paginate($request->get('per_page', 15));
@@ -59,14 +59,14 @@ class EventController extends Controller
 
         return response()->json([
             'message' => 'Event created successfully',
-            'event' => new EventResource($event->load('category')),
+            'event' => new EventResource($event->load('group')),
         ], 201);
     }
 
     public function show(Request $request, string $slug): JsonResponse
     {
         $event = Event::where('slug', $slug)
-            ->with(['category', 'items', 'creator'])
+            ->with(['group', 'items', 'creator'])
             ->firstOrFail();
 
         $this->authorize('view', $event);
@@ -86,7 +86,7 @@ class EventController extends Controller
 
         return response()->json([
             'message' => 'Event updated successfully',
-            'event' => new EventResource($event->load('category')),
+            'event' => new EventResource($event->load('group')),
         ]);
     }
 
@@ -190,7 +190,7 @@ class EventController extends Controller
 
         return response()->json([
             'message' => 'Event duplicated successfully',
-            'event' => new EventResource($newEvent->load('category', 'items')),
+            'event' => new EventResource($newEvent->load('group', 'items')),
         ], 201);
     }
 

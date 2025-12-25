@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('events', function (Blueprint $table) {
             $table->id();
             $table->string('slug')->unique();
-            $table->foreignId('category_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('group_id')->nullable()->constrained()->onDelete('set null');
 
             // Basic Info
             $table->string('name');
@@ -47,7 +47,7 @@ return new class extends Migration
 
             // Indexes
             $table->index(['status', 'registration_open']);
-            $table->index('category_id');
+            $table->index('group_id');
             $table->index('date');
         });
     }

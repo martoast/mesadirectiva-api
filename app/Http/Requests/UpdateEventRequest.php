@@ -16,7 +16,7 @@ class UpdateEventRequest extends FormRequest
     {
         return [
             // Basic Info
-            'category_id' => 'sometimes|exists:categories,id',
+            'group_id' => 'sometimes|exists:groups,id',
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'date' => 'sometimes|date',

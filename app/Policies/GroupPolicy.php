@@ -2,23 +2,23 @@
 
 namespace App\Policies;
 
-use App\Models\Category;
+use App\Models\Group;
 use App\Models\User;
 
-class CategoryPolicy
+class GroupPolicy
 {
     public function viewAny(User $user): bool
     {
         return true;
     }
 
-    public function view(User $user, Category $category): bool
+    public function view(User $user, Group $group): bool
     {
         if ($user->isSuperAdmin()) {
             return true;
         }
 
-        return $user->hasAccessToCategory($category->id);
+        return $user->hasAccessToGroup($group->id);
     }
 
     public function create(User $user): bool
@@ -26,12 +26,12 @@ class CategoryPolicy
         return $user->isSuperAdmin();
     }
 
-    public function update(User $user, Category $category): bool
+    public function update(User $user, Group $group): bool
     {
         return $user->isSuperAdmin();
     }
 
-    public function delete(User $user, Category $category): bool
+    public function delete(User $user, Group $group): bool
     {
         return $user->isSuperAdmin();
     }

@@ -59,7 +59,7 @@ class EventResource extends JsonResource
             'contact_phone' => $this->contact_phone,
 
             // Relationships
-            'category' => new CategoryResource($this->whenLoaded('category')),
+            'group' => new GroupResource($this->whenLoaded('group')),
             'items' => EventItemResource::collection($this->whenLoaded('items')),
             'active_items' => EventItemResource::collection($this->whenLoaded('activeItems')),
             'ticket_tiers' => TicketTierResource::collection($this->whenLoaded('ticketTiers')),
