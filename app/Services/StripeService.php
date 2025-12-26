@@ -24,17 +24,21 @@ class StripeService
     {
         $product = Product::create([
             'name' => $event->name,
-            'description' => $event->about,
+            'description' => strip_tags($event->description ?? ''),
             'metadata' => [
                 'event_id' => $event->id,
                 'event_slug' => $event->slug,
             ],
         ]);
 
+        // Use first active tier's price, or 0 if no tiers
+        $tier = $event->activeTicketTiers()->first();
+        $unitAmount = $tier ? (int) ($tier->price * 100) : 0;
+
         $price = Price::create([
             'product' => $product->id,
-            'unit_amount' => (int) ($event->price * 100),
-            'currency' => 'usd',
+            'unit_amount' => $unitAmount,
+            'currency' => 'mxn',
         ]);
 
         return [
@@ -100,15 +104,19 @@ class StripeService
     {
         $lineItems = [];
 
-        // Add tickets
+        // Add tickets using first available tier
         if ($ticketQuantity > 0) {
+            $tier = $event->availableTicketTiers()->first();
+            $price = $tier ? $tier->price : 0;
+            $dateStr = $event->starts_at ? $event->starts_at->format('F j, Y') : '';
+
             $lineItems[] = [
                 'price_data' => [
-                    'currency' => 'usd',
-                    'unit_amount' => (int) ($event->price * 100), // Convert to cents
+                    'currency' => 'mxn',
+                    'unit_amount' => (int) ($price * 100),
                     'product_data' => [
-                        'name' => $event->name . ' - Ticket',
-                        'description' => "Ticket for {$event->name} on {$event->date->format('F j, Y')}",
+                        'name' => $event->name . ' - ' . ($tier->name ?? 'Ticket'),
+                        'description' => "Ticket for {$event->name}" . ($dateStr ? " on {$dateStr}" : ''),
                         'metadata' => [
                             'event_id' => $event->id,
                             'event_slug' => $event->slug,
@@ -126,8 +134,8 @@ class StripeService
             if ($item && $item->is_active) {
                 $lineItems[] = [
                     'price_data' => [
-                        'currency' => 'usd',
-                        'unit_amount' => (int) ($item->price * 100), // Convert to cents
+                        'currency' => 'mxn',
+                        'unit_amount' => (int) ($item->price * 100),
                         'product_data' => [
                             'name' => $item->name,
                             'description' => $item->description ?? "Add-on for {$event->name}",

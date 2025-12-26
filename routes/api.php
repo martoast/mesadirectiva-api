@@ -108,9 +108,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // Event Actions
         Route::post('/{slug}/publish', [EventController::class, 'publish']);
         Route::post('/{slug}/close', [EventController::class, 'close']);
-        Route::post('/{slug}/toggle-registration', [EventController::class, 'toggleRegistration']);
         Route::post('/{slug}/duplicate', [EventController::class, 'duplicate']);
-        Route::post('/{slug}/hero-image', [EventController::class, 'uploadHeroImage']);
+
+        // Event Media
+        Route::post('/{slug}/image', [EventController::class, 'uploadImage']);
+        Route::post('/{slug}/media', [EventController::class, 'addMedia']);
+        Route::delete('/{slug}/media', [EventController::class, 'removeMedia']);
 
         // Event Items
         Route::get('/{slug}/items', [EventItemController::class, 'index']);

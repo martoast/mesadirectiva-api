@@ -17,9 +17,19 @@ class StoreTicketTierRequest extends FormRequest
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'early_bird_price' => 'nullable|numeric|min:0|lt:price',
-            'early_bird_deadline' => 'nullable|date|after:now',
-            'max_quantity' => 'nullable|integer|min:1',
+            'quantity' => 'nullable|integer|min:1',
+
+            // Sales window
+            'sales_start' => 'nullable|date',
+            'sales_end' => 'nullable|date|after:sales_start',
+
+            // Per-order limits
+            'min_per_order' => 'sometimes|integer|min:1',
+            'max_per_order' => 'sometimes|integer|min:1|gte:min_per_order',
+
+            // Display options
+            'show_description' => 'boolean',
+            'is_hidden' => 'boolean',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
         ];
@@ -28,8 +38,8 @@ class StoreTicketTierRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'early_bird_price.lt' => 'Early bird price must be less than regular price.',
-            'early_bird_deadline.after' => 'Early bird deadline must be in the future.',
+            'sales_end.after' => 'Sales end date must be after sales start date.',
+            'max_per_order.gte' => 'Maximum per order must be greater than or equal to minimum per order.',
         ];
     }
 }

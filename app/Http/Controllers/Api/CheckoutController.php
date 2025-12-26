@@ -89,18 +89,27 @@ class CheckoutController extends Controller
                 ];
             }
         } elseif ($legacyTickets > 0) {
-            // Legacy support: use event price directly
-            if ($legacyTickets > $event->getTicketsAvailable()) {
+            // Legacy support: use first available tier
+            $tier = $event->availableTicketTiers()->first();
+            if (!$tier) {
                 return response()->json([
-                    'error' => 'Not enough tickets available',
-                    'available' => $event->getTicketsAvailable(),
+                    'error' => 'No ticket tiers available',
                 ], 422);
             }
-            $subtotal += $event->price * $legacyTickets;
+            $available = $event->getTotalTicketsAvailable();
+            if ($legacyTickets > $available) {
+                return response()->json([
+                    'error' => 'Not enough tickets available',
+                    'available' => $available,
+                ], 422);
+            }
+            $price = $tier->price;
+            $subtotal += $price * $legacyTickets;
             $lineItemsData[] = [
-                'type' => 'legacy_ticket',
+                'type' => 'tier',
+                'tier' => $tier,
                 'quantity' => $legacyTickets,
-                'price' => $event->price,
+                'price' => $price,
             ];
         }
 
@@ -296,7 +305,7 @@ class CheckoutController extends Controller
                         'currency' => 'mxn',
                         'product_data' => [
                             'name' => $event->name . ' - ' . $tier->name,
-                            'description' => $tier->description ?? ($tier->isEarlyBird() ? 'Early Bird Price' : null),
+                            'description' => $tier->description,
                         ],
                         'unit_amount' => (int) ($lineItem['price'] * 100),
                     ],
@@ -430,7 +439,7 @@ class CheckoutController extends Controller
     public function showOrder(string $orderNumber): JsonResponse
     {
         $order = Order::where('order_number', $orderNumber)
-            ->with(['event:id,name,slug,date,time,location', 'items'])
+            ->with(['event:id,name,slug,starts_at,ends_at,timezone,location_type,location', 'items'])
             ->firstOrFail();
 
         return response()->json([

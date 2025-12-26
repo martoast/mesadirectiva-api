@@ -14,16 +14,32 @@ class TicketTierResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'price' => (float) $this->price,
-            'early_bird_price' => $this->early_bird_price ? (float) $this->early_bird_price : null,
-            'early_bird_deadline' => $this->early_bird_deadline,
-            'current_price' => $this->getCurrentPrice(),
-            'is_early_bird' => $this->isEarlyBird(),
-            'max_quantity' => $this->max_quantity,
+
+            // Inventory
+            'quantity' => $this->quantity,
             'quantity_sold' => $this->quantity_sold,
             'available' => $this->getAvailableQuantity(),
-            'is_available' => $this->isAvailable(),
+
+            // Sales Window
+            'sales_start' => $this->sales_start,
+            'sales_end' => $this->sales_end,
+            'sales_status' => $this->getSalesStatus(),
+            'is_on_sale' => $this->isOnSale(),
+
+            // Per-order limits
+            'min_per_order' => $this->min_per_order,
+            'max_per_order' => $this->max_per_order,
+
+            // Display options
+            'show_description' => $this->show_description,
+            'is_hidden' => $this->is_hidden,
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,
+
+            // Computed
+            'is_available' => $this->isAvailable(),
+            'is_sold_out' => $this->isSoldOut(),
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

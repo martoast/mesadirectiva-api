@@ -2,14 +2,21 @@
 
 ## Overview
 
-REST API backend for an event ticketing platform. Supports two mutually exclusive event types: **General Admission** (with ticket tiers and early bird pricing) and **Seated Events** (with tables and seat selection). Includes ticket sales via Stripe Checkout, role-based access control with group-based permissions, and Excel-exportable reports.
+REST API backend for an event ticketing platform. Supports two event types: **General Admission** (with Eventbrite-style ticket tiers and sales windows) and **Seated Events** (with tables and seat selection). Events can be held at a **venue** or **online**. Includes ticket sales via Stripe Checkout, role-based access control with group-based permissions, and Excel-exportable reports.
 
 ### Event Types
 
 | Event Type | Description |
 |------------|-------------|
-| **General Admission** | Ticket tiers (e.g., General, VIP, Premium) with optional early bird pricing. Quantity-based purchasing. |
+| **General Admission** | Ticket tiers (e.g., Early Bird, General, VIP) with sales windows. Each tier has its own start/end dates for Eventbrite-style early bird support. |
 | **Seated** | Tables and individual seats. Customers select specific tables or seats to purchase. Includes reservation system during checkout. |
+
+### Location Types
+
+| Location Type | Description |
+|---------------|-------------|
+| **Venue** | Physical location with address, city, state, and optional map URL |
+| **Online** | Virtual event with platform name (e.g., Zoom), URL, and instructions |
 
 ### Tech Stack
 - **Framework:** Laravel 12 (PHP 8.4)
@@ -88,62 +95,71 @@ Authorization: Bearer {token}
 {
   "id": 1,
   "slug": "annual-gala-2024",
-  "name": "Annual Gala 2024",
-  "description": "Our annual fundraising gala",
-  "date": "2024-06-15",
-  "time": "18:00",
-  "location": "Grand Ballroom, Hotel XYZ",
-  "price": 150.00,
-  "max_tickets": 500,
-  "tickets_sold": 125,
-  "tickets_available": 375,
-  "status": "draft|live|closed",
 
-  // Seating Configuration
+  // Core Info
+  "name": "Annual Gala 2024",
+  "description": "<p>Our annual fundraising gala with <strong>rich HTML</strong> content</p>",
+  "image": "events/annual-gala-2024/hero-abc123.jpg",
+  "image_url": "https://s3.../events/annual-gala-2024/hero-abc123.jpg",
+
+  // Date/Time
+  "starts_at": "2024-06-15T18:00:00Z",
+  "ends_at": "2024-06-15T23:00:00Z",
+  "timezone": "America/Los_Angeles",
+
+  // Location
+  "location_type": "venue|online",
+  "location": {
+    // For venue events:
+    "name": "Grand Ballroom at Hotel Marriott",
+    "address": "123 Main Street",
+    "city": "Los Angeles",
+    "state": "CA",
+    "country": "USA",
+    "postal_code": "90001",
+    "map_url": "https://maps.google.com/?q=..."
+    // For online events:
+    // "platform": "Zoom",
+    // "url": "https://zoom.us/j/123456789",
+    // "instructions": "Link will be sent 1 hour before"
+  },
+  "location_name": "Grand Ballroom at Hotel Marriott",
+  "location_address": "123 Main Street, Los Angeles, CA, 90001",
+
+  // Media Gallery
+  "media": {
+    "images": [
+      { "type": "upload", "path": "events/.../gallery/abc.jpg", "url": "https://s3..." },
+      { "type": "url", "url": "https://example.com/image.jpg" }
+    ],
+    "videos": [
+      { "type": "youtube", "url": "https://youtube.com/...", "video_id": "dQw4w9WgXcQ" }
+    ]
+  },
+
+  // Event Type
   "seating_type": "general_admission|seated",
   "reservation_minutes": 15,
 
-  "registration_open": true,
-  "registration_deadline": "2024-06-10T23:59:59Z",
-  "can_purchase": true,
-  "purchase_blocked_reason": null,
+  // Settings
+  "status": "draft|live|closed",
+  "is_private": false,
+  "show_remaining": true,
 
-  // Hero Section
-  "hero_title": "Annual Gala 2024",
-  "hero_subtitle": "Join us for an unforgettable evening",
-  "hero_image": "events/annual-gala-2024/hero-abc123.jpg",
-  "hero_image_url": "https://s3.../events/annual-gala-2024/hero-abc123.jpg",
-  "hero_cta_text": "Get Your Tickets",
+  // Organizer
+  "organizer_name": "School Foundation",
+  "organizer_description": "Supporting education for 25 years",
 
-  // About Section
-  "about": "Short description text",
-  "about_title": "A Night to Remember",
-  "about_content": "<p>Rich <strong>HTML content</strong> for detailed description...</p>",
-  "about_image": "https://example.com/about-image.jpg",
-  "about_image_url": "https://example.com/about-image.jpg",
-  "about_image_position": "right",
-
-  // Rich Content Sections (all optional)
-  "highlights": [
-    { "icon": "utensils", "title": "Gourmet Dining", "description": "Five-course meal" }
-  ],
-  "schedule": [
-    { "time": "6:00 PM", "title": "Doors Open", "description": "Welcome reception" }
-  ],
-  "gallery_images": [
-    "https://example.com/image1.jpg",
-    "https://example.com/image2.jpg"
-  ],
+  // Content
   "faq_items": [
     { "question": "What is the dress code?", "answer": "Black tie optional." }
   ],
 
-  // Venue & Contact (all optional)
-  "venue_name": "Grand Ballroom at Hotel Marriott",
-  "venue_address": "123 Main Street, City, ST 12345",
-  "venue_map_url": "https://maps.google.com/?q=...",
-  "contact_email": "events@example.com",
-  "contact_phone": "+1 (555) 123-4567",
+  // Computed Fields
+  "can_purchase": true,
+  "purchase_blocked_reason": null,
+  "total_tickets_sold": 125,
+  "total_tickets_available": 375,
 
   // Relationships
   "group": GroupResource,
@@ -151,6 +167,7 @@ Authorization: Bearer {token}
   "active_items": [EventItemResource],
   "ticket_tiers": [TicketTierResource],
   "active_ticket_tiers": [TicketTierResource],
+  "available_ticket_tiers": [TicketTierResource],
   "tables": [TableResource],
   "active_tables": [TableResource],
   "created_by": 1,
@@ -169,44 +186,72 @@ Authorization: Bearer {token}
 - `general_admission` (default) → Uses ticket tiers for pricing
 - `seated` → Uses tables and seats for selection
 
+**Location Types:**
+- `venue` (default) → Physical location with address details
+- `online` → Virtual event with platform, URL, and instructions
+
 **Purchase Blocked Reasons:**
 - `not_live` - Event is not published
-- `registration_closed` - Registration manually closed
-- `deadline_passed` - Past registration deadline
-- `sold_out` - No tickets available
+- `no_available_tickets` - No ticket tiers currently on sale or all sold out
 
 ---
 
 ### TicketTier (General Admission Events)
 
-Ticket pricing tiers with optional early bird discounts.
+Eventbrite-style ticket tiers with sales windows. Each tier can have its own sale start/end dates.
 
 ```json
 {
   "id": 1,
-  "event_id": 1,
-  "name": "VIP",
-  "description": "Front row seating with complimentary drinks",
-  "price": 200.00,
-  "early_bird_price": 150.00,
-  "early_bird_deadline": "2024-05-01T23:59:59Z",
-  "current_price": 150.00,
-  "is_early_bird": true,
-  "max_quantity": 50,
+  "name": "Early Bird",
+  "description": "Limited time pricing - save 30%!",
+  "price": 35.00,
+
+  // Inventory
+  "quantity": 100,
   "quantity_sold": 10,
-  "available_quantity": 40,
-  "is_available": true,
+  "available": 90,
+
+  // Sales Window (Eventbrite-style)
+  "sales_start": "2024-01-01T00:00:00Z",
+  "sales_end": "2024-02-01T23:59:59Z",
+  "sales_status": "on_sale|scheduled|ended|sold_out|inactive|hidden",
+  "is_on_sale": true,
+
+  // Per-order limits
+  "min_per_order": 1,
+  "max_per_order": 4,
+
+  // Display options
+  "show_description": true,
+  "is_hidden": false,
   "sort_order": 1,
   "is_active": true,
+
+  // Computed
+  "is_available": true,
+  "is_sold_out": false,
+
   "created_at": "2024-01-01T00:00:00Z",
   "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
-**Pricing Logic:**
-- If `early_bird_deadline` is set and `now() < early_bird_deadline`, use `early_bird_price`
-- Otherwise, use `price`
-- `current_price` and `is_early_bird` are computed fields
+**Sales Status Values:**
+- `on_sale` - Currently available for purchase
+- `scheduled` - Sales haven't started yet (`sales_start` is in the future)
+- `ended` - Sales period has ended (`sales_end` is in the past)
+- `sold_out` - No quantity remaining
+- `inactive` - Tier is disabled (`is_active = false`)
+- `hidden` - Tier is hidden from public (`is_hidden = true`)
+
+**Early Bird Implementation:**
+Create separate tiers with different sales windows:
+```
+Early Bird:   $35, sales_start: now, sales_end: +2 weeks
+General:      $50, sales_start: +2 weeks, sales_end: event start
+VIP:          $100, sales_start: now, sales_end: event start
+```
 
 ---
 
@@ -287,67 +332,10 @@ Temporary holds during checkout process.
 
 ---
 
-### Event Landing Page Sections
-
-All landing page fields are **optional** - admins can progressively enhance their event pages.
-
-#### Hero Section
-| Field | Type | Description |
-|-------|------|-------------|
-| `hero_title` | string | Main headline (required) |
-| `hero_subtitle` | string | Secondary text (required) |
-| `hero_image` | string | Background image URL |
-| `hero_image_url` | string | Full URL for display (auto-generated) |
-| `hero_cta_text` | string | Call-to-action button text (e.g., "Get Tickets") |
-
-#### About Section
-| Field | Type | Description |
-|-------|------|-------------|
-| `about` | string | Short description (required) |
-| `about_title` | string | Section heading |
-| `about_content` | string | Rich HTML content for detailed description |
-| `about_image` | string | Image URL for about section |
-| `about_image_url` | string | Full URL for display (auto-generated) |
-| `about_image_position` | enum | `"left"` or `"right"` (default: right) |
-
-#### Highlights Section
-Feature cards to showcase key event highlights.
-```json
-"highlights": [
-  {
-    "icon": "utensils",      // Icon name (use FontAwesome or similar)
-    "title": "Gourmet Dining",
-    "description": "Five-course meal prepared by award-winning chefs"
-  }
-]
-```
-Max 10 items.
-
-#### Schedule Section
-Timeline/agenda for the event.
-```json
-"schedule": [
-  {
-    "time": "6:00 PM",
-    "title": "Doors Open",
-    "description": "Welcome reception with cocktails"
-  }
-]
-```
-Max 20 items.
-
-#### Gallery Section
-Array of image URLs for photo gallery.
-```json
-"gallery_images": [
-  "https://example.com/photo1.jpg",
-  "https://example.com/photo2.jpg"
-]
-```
-Max 20 images.
+### Event Content Sections
 
 #### FAQ Section
-Common questions and answers.
+Common questions and answers (max 20 items):
 ```json
 "faq_items": [
   {
@@ -356,34 +344,51 @@ Common questions and answers.
   }
 ]
 ```
-Max 20 items.
-
-#### Venue & Contact
-| Field | Type | Description |
-|-------|------|-------------|
-| `venue_name` | string | Venue name |
-| `venue_address` | string | Full address |
-| `venue_map_url` | string | Google Maps or similar URL |
-| `contact_email` | email | Contact email for inquiries |
-| `contact_phone` | string | Contact phone number |
 
 ---
 
-### Image Handling
+### Image & Media Handling
 
-Both `hero_image` and `about_image` support two methods:
+#### Main Event Image
+The `image` field stores the main event image (hero/banner):
 
-| Method | How | When to Use |
-|--------|-----|-------------|
-| **URL** | Pass image URL in create/update request | Quick setup, external images |
-| **File Upload** | `POST /events/{slug}/hero-image` with multipart form | Custom images, auto-optimization |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **URL** | `PUT /events/{slug}` with `image` field | Pass an external URL |
+| **File Upload** | `POST /events/{slug}/image` | Upload file (auto-resized to 1920x1080) |
 
-The API returns two fields for each image:
-- `hero_image` / `about_image` - The raw value (S3 path or external URL)
-- `hero_image_url` / `about_image_url` - The full displayable URL (always use this)
+#### Media Gallery
+The `media` field stores images and YouTube videos:
+
+```json
+{
+  "images": [
+    { "type": "upload", "path": "events/.../gallery/abc.jpg", "url": "https://s3..." },
+    { "type": "url", "url": "https://example.com/image.jpg" }
+  ],
+  "videos": [
+    { "type": "youtube", "url": "https://youtube.com/watch?v=...", "video_id": "dQw4w9WgXcQ" }
+  ]
+}
+```
+
+**Add Media:**
+```
+POST /events/{slug}/media
+```
+- For image upload: `type=image`, `file={multipart file}`
+- For image URL: `type=image`, `url=https://...`
+- For YouTube: `type=youtube`, `url=https://youtube.com/...`
+
+**Remove Media:**
+```
+DELETE /events/{slug}/media
+```
+Body: `{ "type": "images|videos", "index": 0 }`
 
 File uploads are:
-- Resized to max 1920x1080
+- Gallery images: Resized to max 1200x1200
+- Main image: Resized to max 1920x1080
 - Converted to JPEG (85% quality)
 - Stored on S3
 
@@ -1129,27 +1134,59 @@ Authorization: Bearer {token}
 **Request Body:**
 ```json
 {
+  // Required
   "group_id": 1,
   "name": "New Event",
-  "description": "Event description",
-  "date": "2024-08-15",
-  "time": "18:00",
-  "location": "Event Venue",
-  "price": 100.00,
-  "max_tickets": 200,
+  "starts_at": "2024-08-15T18:00:00",
+  "ends_at": "2024-08-15T23:00:00",
+
+  // Optional - Core Info
+  "description": "<p>Event description with <strong>HTML</strong></p>",
+  "image": "https://example.com/image.jpg",
+  "timezone": "America/Los_Angeles",
+
+  // Optional - Location (venue or online)
+  "location_type": "venue",
+  "location": {
+    "name": "Event Venue",
+    "address": "123 Main St",
+    "city": "Los Angeles",
+    "state": "CA",
+    "country": "USA",
+    "postal_code": "90001",
+    "map_url": "https://maps.google.com/..."
+  },
+
+  // Optional - Event Type
   "seating_type": "general_admission",
   "reservation_minutes": 15,
-  "hero_title": "Welcome to New Event",
-  "hero_subtitle": "Don't miss this amazing opportunity",
-  "hero_image": "https://example.com/image.jpg",
-  "about": "Full event description and details...",
-  "registration_deadline": "2024-08-10T23:59:59Z"
+
+  // Optional - Settings
+  "is_private": false,
+  "show_remaining": true,
+
+  // Optional - Organizer
+  "organizer_name": "Event Organizers Inc",
+  "organizer_description": "We've been organizing events since 2010",
+
+  // Optional - FAQ
+  "faq_items": [
+    { "question": "Is parking available?", "answer": "Yes, free parking." }
+  ]
 }
 ```
 
-> **Note:** `hero_image` is optional. You can either:
-> 1. Pass a URL here when creating/updating the event
-> 2. Upload a file separately via `POST /events/{slug}/hero-image`
+**For Online Events:**
+```json
+{
+  "location_type": "online",
+  "location": {
+    "platform": "Zoom",
+    "url": "https://zoom.us/j/123456789",
+    "instructions": "Link will be sent 1 hour before the event"
+  }
+}
+```
 
 **Response (201):**
 ```json
@@ -1181,18 +1218,24 @@ Authorization: Bearer {token}
 {
   "name": "Updated Event Name",
   "description": "Updated description",
-  "date": "2024-08-20",
-  "time": "19:00",
-  "location": "New Venue",
-  "price": 125.00,
-  "max_tickets": 250,
+  "image": "https://example.com/new-image.jpg",
+  "starts_at": "2024-08-20T19:00:00",
+  "ends_at": "2024-08-20T23:00:00",
+  "timezone": "America/Los_Angeles",
+  "location_type": "venue",
+  "location": {
+    "name": "New Venue",
+    "address": "456 New St",
+    "city": "San Francisco",
+    "state": "CA"
+  },
   "seating_type": "seated",
   "reservation_minutes": 20,
-  "hero_title": "Updated Title",
-  "hero_subtitle": "Updated subtitle",
-  "hero_image": "https://example.com/new-image.jpg",
-  "about": "Updated about section",
-  "registration_deadline": "2024-08-15T23:59:59Z"
+  "is_private": false,
+  "show_remaining": true,
+  "organizer_name": "Updated Organizer",
+  "organizer_description": "Updated description",
+  "faq_items": []
 }
 ```
 **Response (200):**
@@ -1243,19 +1286,6 @@ Authorization: Bearer {token}
 }
 ```
 
-#### Toggle Registration
-```
-POST /events/{slug}/toggle-registration
-Authorization: Bearer {token}
-```
-**Response (200):**
-```json
-{
-  "message": "Registration opened|closed",
-  "event": EventResource
-}
-```
-
 #### Duplicate Event
 ```
 POST /events/{slug}/duplicate
@@ -1271,9 +1301,9 @@ Creates a copy of the event with status `draft`.
 }
 ```
 
-#### Upload Hero Image
+#### Upload Event Image
 ```
-POST /events/{slug}/hero-image
+POST /events/{slug}/image
 Authorization: Bearer {token}
 Content-Type: multipart/form-data
 ```
@@ -1286,6 +1316,58 @@ Content-Type: multipart/form-data
   "message": "Image uploaded successfully",
   "path": "events/annual-gala-2024/hero-xyz789.jpg",
   "url": "https://s3.../events/annual-gala-2024/hero-xyz789.jpg"
+}
+```
+
+#### Add Media to Gallery
+```
+POST /events/{slug}/media
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+**Request Body (image upload):**
+- `type` = "image"
+- `file` - Image file (jpeg, png, webp, max 5MB)
+
+**Request Body (image URL):**
+- `type` = "image"
+- `url` - External image URL
+
+**Request Body (YouTube video):**
+- `type` = "youtube"
+- `url` - YouTube video URL
+
+**Response (200):**
+```json
+{
+  "message": "Media added successfully",
+  "media": {
+    "images": [...],
+    "videos": [...]
+  }
+}
+```
+
+#### Remove Media from Gallery
+```
+DELETE /events/{slug}/media
+Authorization: Bearer {token}
+```
+**Request Body:**
+```json
+{
+  "type": "images|videos",
+  "index": 0
+}
+```
+**Response (200):**
+```json
+{
+  "message": "Media removed successfully",
+  "media": {
+    "images": [...],
+    "videos": [...]
+  }
 }
 ```
 
@@ -1337,12 +1419,16 @@ Authorization: Bearer {token}
 **Request Body:**
 ```json
 {
-  "name": "VIP",
-  "description": "Front row seating with drinks",
-  "price": 200.00,
-  "early_bird_price": 150.00,
-  "early_bird_deadline": "2024-05-01T23:59:59Z",
-  "max_quantity": 50,
+  "name": "Early Bird",
+  "description": "Limited time pricing - save 30%!",
+  "price": 35.00,
+  "quantity": 100,
+  "sales_start": "2024-01-01T00:00:00Z",
+  "sales_end": "2024-02-01T23:59:59Z",
+  "min_per_order": 1,
+  "max_per_order": 4,
+  "show_description": true,
+  "is_hidden": false,
   "sort_order": 1,
   "is_active": true
 }
@@ -1372,11 +1458,19 @@ Authorization: Bearer {token}
 PUT /events/{slug}/ticket-tiers/{tierId}
 Authorization: Bearer {token}
 ```
-**Request Body:**
+**Request Body:** (all fields optional)
 ```json
 {
-  "name": "Updated VIP",
-  "price": 250.00,
+  "name": "Updated Tier Name",
+  "description": "Updated description",
+  "price": 50.00,
+  "quantity": 200,
+  "sales_start": "2024-02-01T00:00:00Z",
+  "sales_end": "2024-03-01T23:59:59Z",
+  "min_per_order": 1,
+  "max_per_order": 6,
+  "show_description": false,
+  "is_hidden": false,
   "is_active": true
 }
 ```
@@ -2002,36 +2096,38 @@ VITE_GOOGLE_CLIENT_ID=xxx
 ## Database Schema Overview
 
 ```
-┌─────────────┐      ┌──────────────────┐      ┌─────────────────┐
-│   users     │      │     groups       │      │     events      │
-├─────────────┤      ├──────────────────┤      ├─────────────────┤
-│ id          │◄──┐  │ id               │◄──┐  │ id              │
-│ name        │   │  │ name             │   │  │ slug            │
-│ email       │   │  │ slug             │   │  │ name            │
-│ role        │   │  │ color            │   │  │ seating_type    │
-│ is_active   │   │  └──────────────────┘   │  │ status          │
-└─────────────┘   │                          │  │ group_id ────┘
-       │          │                          │  │ created_by ─────┘
-       │          │                          │  └─────────────────┘
-       │          │                          │           │
-       └──────────┴──────────────────────────┘           │
-                                                         │
-    ┌────────────────────────────────────────────────────┴───────────────────────────────────┐
-    │                                                                                         │
-    ▼                                    ▼                                    ▼               ▼
-┌─────────────────┐              ┌─────────────────┐              ┌─────────────────┐   ┌──────────────┐
-│  ticket_tiers   │              │     tables      │              │  event_items    │   │    orders    │
-├─────────────────┤              ├─────────────────┤              ├─────────────────┤   ├──────────────┤
-│ id              │              │ id              │              │ id              │   │ id           │
-│ event_id        │              │ event_id        │              │ event_id        │   │ event_id     │
-│ name            │              │ name            │              │ name            │   │ order_number │
-│ price           │              │ capacity        │              │ price           │   │ status       │
-│ early_bird_price│              │ price           │              │ max_quantity    │   │ total        │
-│ early_bird_deadline│           │ sell_as_whole   │              └─────────────────┘   └──────────────┘
-│ max_quantity    │              │ status          │                                            │
-│ quantity_sold   │              └─────────────────┘                                            │
-└─────────────────┘                      │                                                      │
-                                         │                                                      │
+┌─────────────┐      ┌──────────────────┐      ┌──────────────────────────────┐
+│   users     │      │     groups       │      │           events             │
+├─────────────┤      ├──────────────────┤      ├──────────────────────────────┤
+│ id          │◄──┐  │ id               │◄──┐  │ id                           │
+│ name        │   │  │ name             │   │  │ slug                         │
+│ email       │   │  │ slug             │   │  │ name, description, image     │
+│ role        │   │  │ color            │   │  │ starts_at, ends_at, timezone │
+│ is_active   │   │  └──────────────────┘   │  │ location_type, location (JSON)│
+└─────────────┘   │                          │  │ media (JSON), faq_items (JSON)│
+       │          │                          │  │ seating_type, status         │
+       │          │                          │  │ is_private, show_remaining   │
+       │          │                          │  │ organizer_name/description   │
+       └──────────┴──────────────────────────┘  │ group_id ────────────────────┘
+                                                │ created_by ──────────────────┘
+                                                └──────────────────────────────┘
+                                                              │
+    ┌─────────────────────────────────────────────────────────┴───────────────────────────────┐
+    │                                                                                          │
+    ▼                                    ▼                                    ▼                ▼
+┌──────────────────────┐         ┌─────────────────┐              ┌─────────────────┐   ┌──────────────┐
+│    ticket_tiers      │         │     tables      │              │  event_items    │   │    orders    │
+├──────────────────────┤         ├─────────────────┤              ├─────────────────┤   ├──────────────┤
+│ id                   │         │ id              │              │ id              │   │ id           │
+│ event_id             │         │ event_id        │              │ event_id        │   │ event_id     │
+│ name, description    │         │ name            │              │ name            │   │ order_number │
+│ price                │         │ capacity        │              │ price           │   │ status       │
+│ quantity, quantity_sold│       │ price           │              │ max_quantity    │   │ total        │
+│ sales_start, sales_end│        │ sell_as_whole   │              └─────────────────┘   └──────────────┘
+│ min/max_per_order    │         │ status          │                                            │
+│ show_description     │         └─────────────────┘                                            │
+│ is_hidden, is_active │                 │                                                      │
+└──────────────────────┘                 │                                                      │
                                          ▼                                                      ▼
                                  ┌─────────────────┐                                    ┌──────────────┐
                                  │     seats       │                                    │ order_items  │

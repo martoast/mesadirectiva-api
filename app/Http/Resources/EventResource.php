@@ -13,50 +13,51 @@ class EventResource extends JsonResource
         return [
             'id' => $this->id,
             'slug' => $this->slug,
+
+            // Core Info
             'name' => $this->name,
             'description' => $this->description,
-            'date' => $this->date?->format('Y-m-d'),
-            'time' => $this->time,
+            'image' => $this->image,
+            'image_url' => $this->getImageUrl($this->image),
+
+            // Date/Time
+            'starts_at' => $this->starts_at,
+            'ends_at' => $this->ends_at,
+            'timezone' => $this->timezone,
+
+            // Location
+            'location_type' => $this->location_type,
             'location' => $this->location,
-            'price' => (float) $this->price,
-            'max_tickets' => $this->max_tickets,
-            'tickets_sold' => $this->tickets_sold,
-            'tickets_available' => $this->getTicketsAvailable(),
-            'status' => $this->status,
+            'location_name' => $this->getLocationName(),
+            'location_address' => $this->getLocationAddress(),
+
+            // Media Gallery
+            'media' => $this->media,
+
+            // Event Type
             'seating_type' => $this->seating_type ?? 'general_admission',
             'reservation_minutes' => $this->reservation_minutes ?? 15,
-            'registration_open' => $this->registration_open,
-            'registration_deadline' => $this->registration_deadline,
-            'can_purchase' => $this->canPurchase(),
-            'purchase_blocked_reason' => $this->getPurchaseBlockedReason(),
 
-            // Hero Section
-            'hero_title' => $this->hero_title,
-            'hero_subtitle' => $this->hero_subtitle,
-            'hero_image' => $this->hero_image,
-            'hero_image_url' => $this->getImageUrl($this->hero_image),
-            'hero_cta_text' => $this->hero_cta_text,
+            // Settings
+            'status' => $this->status,
+            'is_private' => $this->is_private,
+            'show_remaining' => $this->show_remaining,
 
-            // About Section
-            'about' => $this->about,
-            'about_title' => $this->about_title,
-            'about_content' => $this->about_content,
-            'about_image' => $this->about_image,
-            'about_image_url' => $this->getImageUrl($this->about_image),
-            'about_image_position' => $this->about_image_position,
+            // Organizer
+            'organizer_name' => $this->organizer_name,
+            'organizer_description' => $this->organizer_description,
 
-            // Rich Content Sections
-            'highlights' => $this->highlights,
-            'schedule' => $this->schedule,
-            'gallery_images' => $this->gallery_images,
+            // Content
             'faq_items' => $this->faq_items,
 
-            // Venue & Contact
-            'venue_name' => $this->venue_name,
-            'venue_address' => $this->venue_address,
-            'venue_map_url' => $this->venue_map_url,
-            'contact_email' => $this->contact_email,
-            'contact_phone' => $this->contact_phone,
+            // Computed Fields
+            'can_purchase' => $this->canPurchase(),
+            'purchase_blocked_reason' => $this->getPurchaseBlockedReason(),
+            'total_tickets_sold' => $this->getTotalTicketsSold(),
+            'total_tickets_available' => $this->when(
+                $this->show_remaining,
+                fn() => $this->getTotalTicketsAvailable()
+            ),
 
             // Relationships
             'group' => new GroupResource($this->whenLoaded('group')),
@@ -64,6 +65,7 @@ class EventResource extends JsonResource
             'active_items' => EventItemResource::collection($this->whenLoaded('activeItems')),
             'ticket_tiers' => TicketTierResource::collection($this->whenLoaded('ticketTiers')),
             'active_ticket_tiers' => TicketTierResource::collection($this->whenLoaded('activeTicketTiers')),
+            'available_ticket_tiers' => TicketTierResource::collection($this->whenLoaded('availableTicketTiers')),
             'tables' => TableResource::collection($this->whenLoaded('tables')),
             'active_tables' => TableResource::collection($this->whenLoaded('activeTables')),
             'created_by' => $this->created_by,

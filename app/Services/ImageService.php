@@ -16,7 +16,8 @@ class ImageService
     public function __construct()
     {
         $this->manager = new ImageManager(new Driver());
-        $this->disk = config('filesystems.default', 's3');
+        // Use dedicated media disk: 's3' for production (DO Spaces), 'public' for local dev
+        $this->disk = config('filesystems.media_disk', 'public');
     }
 
     /**
@@ -31,6 +32,29 @@ class ImageService
             'events/%s/hero-%s.jpg',
             $eventSlug,
             Str::random(8)
+        );
+
+        Storage::disk($this->disk)->put(
+            $filename,
+            $image->toJpeg(quality: 85),
+            'public'
+        );
+
+        return $filename;
+    }
+
+    /**
+     * Upload and resize gallery image
+     */
+    public function uploadGalleryImage(UploadedFile $file, string $eventSlug): string
+    {
+        $image = $this->manager->read($file->getContent());
+        $image->scaleDown(width: 1200, height: 1200);
+
+        $filename = sprintf(
+            'events/%s/gallery/%s.jpg',
+            $eventSlug,
+            Str::random(12)
         );
 
         Storage::disk($this->disk)->put(

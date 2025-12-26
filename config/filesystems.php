@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Media Storage Disk
+    |--------------------------------------------------------------------------
+    |
+    | This disk is used for storing event images and media files.
+    | Use 'public' for local development, 's3' for production (DigitalOcean Spaces).
+    |
+    */
+
+    'media_disk' => env('MEDIA_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |

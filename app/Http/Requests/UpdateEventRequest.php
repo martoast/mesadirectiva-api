@@ -15,57 +15,48 @@ class UpdateEventRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Basic Info
+            // Core Info
             'group_id' => 'sometimes|exists:groups,id',
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'date' => 'sometimes|date',
-            'time' => 'sometimes|date_format:H:i',
-            'location' => 'sometimes|string|max:255',
-            'price' => 'sometimes|numeric|min:0',
-            'max_tickets' => 'sometimes|integer|min:1',
-            'registration_deadline' => 'nullable|date',
+            'image' => 'nullable|url|max:2000',
 
-            // Hero Section
-            'hero_title' => 'sometimes|string|max:255',
-            'hero_subtitle' => 'sometimes|string|max:500',
-            'hero_image' => 'nullable|url|max:2000',
-            'hero_cta_text' => 'nullable|string|max:50',
+            // Date/Time
+            'starts_at' => 'sometimes|date',
+            'ends_at' => 'sometimes|date|after:starts_at',
+            'timezone' => 'sometimes|string|timezone',
 
-            // About Section
-            'about' => 'sometimes|string',
-            'about_title' => 'nullable|string|max:255',
-            'about_content' => 'nullable|string|max:10000',
-            'about_image' => 'nullable|url|max:2000',
-            'about_image_position' => 'nullable|in:left,right',
+            // Location
+            'location_type' => 'sometimes|in:venue,online',
+            'location' => 'nullable|array',
+            'location.name' => 'nullable|string|max:255',
+            'location.address' => 'nullable|string|max:500',
+            'location.city' => 'nullable|string|max:100',
+            'location.state' => 'nullable|string|max:100',
+            'location.country' => 'nullable|string|max:100',
+            'location.postal_code' => 'nullable|string|max:20',
+            'location.map_url' => 'nullable|url|max:2000',
+            // Online event fields
+            'location.platform' => 'nullable|string|max:100',
+            'location.url' => 'nullable|url|max:2000',
+            'location.instructions' => 'nullable|string|max:1000',
 
-            // Highlights Section
-            'highlights' => 'nullable|array|max:10',
-            'highlights.*.icon' => 'nullable|string|max:50',
-            'highlights.*.title' => 'required_with:highlights|string|max:100',
-            'highlights.*.description' => 'nullable|string|max:500',
+            // Event Type
+            'seating_type' => 'sometimes|in:general_admission,seated',
+            'reservation_minutes' => 'sometimes|integer|min:5|max:60',
 
-            // Schedule Section
-            'schedule' => 'nullable|array|max:20',
-            'schedule.*.time' => 'required_with:schedule|string|max:20',
-            'schedule.*.title' => 'required_with:schedule|string|max:100',
-            'schedule.*.description' => 'nullable|string|max:500',
+            // Settings
+            'is_private' => 'sometimes|boolean',
+            'show_remaining' => 'sometimes|boolean',
 
-            // Gallery Section
-            'gallery_images' => 'nullable|array|max:20',
-            'gallery_images.*' => 'url|max:2000',
+            // Organizer
+            'organizer_name' => 'nullable|string|max:255',
+            'organizer_description' => 'nullable|string|max:2000',
 
-            // FAQ Section
+            // FAQ (optional)
             'faq_items' => 'nullable|array|max:20',
             'faq_items.*.question' => 'required_with:faq_items|string|max:255',
             'faq_items.*.answer' => 'required_with:faq_items|string|max:2000',
-
-            // Venue & Contact
-            'venue_name' => 'nullable|string|max:255',
-            'venue_address' => 'nullable|string|max:500',
-            'venue_map_url' => 'nullable|url|max:2000',
-            'contact_email' => 'nullable|email|max:255',
-            'contact_phone' => 'nullable|string|max:30',
         ];
     }
 }

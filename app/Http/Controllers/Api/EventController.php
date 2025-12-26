@@ -12,6 +12,7 @@ use App\Services\ImageService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
@@ -24,7 +25,7 @@ class EventController extends Controller
     {
         $query = Event::accessibleBy($request->user())
             ->with('group')
-            ->orderBy('date', 'desc');
+            ->orderBy('starts_at', 'desc');
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -32,6 +33,10 @@ class EventController extends Controller
 
         if ($request->has('group_id')) {
             $query->where('group_id', $request->group_id);
+        }
+
+        if ($request->boolean('upcoming')) {
+            $query->upcoming();
         }
 
         $events = $query->paginate($request->get('per_page', 15));
@@ -52,8 +57,6 @@ class EventController extends Controller
         $event = Event::create([
             ...$request->validated(),
             'status' => 'draft',
-            'tickets_sold' => 0,
-            'registration_open' => true,
             'created_by' => $request->user()->id,
         ]);
 
@@ -66,7 +69,7 @@ class EventController extends Controller
     public function show(Request $request, string $slug): JsonResponse
     {
         $event = Event::where('slug', $slug)
-            ->with(['group', 'items', 'creator'])
+            ->with(['group', 'items', 'creator', 'ticketTiers'])
             ->firstOrFail();
 
         $this->authorize('view', $event);
@@ -146,20 +149,6 @@ class EventController extends Controller
         ]);
     }
 
-    public function toggleRegistration(Request $request, string $slug): JsonResponse
-    {
-        $event = Event::where('slug', $slug)->firstOrFail();
-
-        $this->authorize('update', $event);
-
-        $event->update(['registration_open' => !$event->registration_open]);
-
-        return response()->json([
-            'message' => $event->registration_open ? 'Registration opened' : 'Registration closed',
-            'event' => new EventResource($event),
-        ]);
-    }
-
     public function duplicate(Request $request, string $slug): JsonResponse
     {
         $event = Event::where('slug', $slug)->firstOrFail();
@@ -169,14 +158,12 @@ class EventController extends Controller
         $newEvent = $event->replicate([
             'slug',
             'status',
-            'tickets_sold',
             'stripe_product_id',
             'stripe_price_id',
         ]);
 
         $newEvent->name = $event->name . ' (Copy)';
         $newEvent->status = 'draft';
-        $newEvent->tickets_sold = 0;
         $newEvent->created_by = $request->user()->id;
         $newEvent->save();
 
@@ -188,13 +175,21 @@ class EventController extends Controller
             $newItem->save();
         }
 
+        // Duplicate ticket tiers
+        foreach ($event->ticketTiers as $tier) {
+            $newTier = $tier->replicate();
+            $newTier->event_id = $newEvent->id;
+            $newTier->quantity_sold = 0;
+            $newTier->save();
+        }
+
         return response()->json([
             'message' => 'Event duplicated successfully',
-            'event' => new EventResource($newEvent->load('group', 'items')),
+            'event' => new EventResource($newEvent->load('group', 'items', 'ticketTiers')),
         ], 201);
     }
 
-    public function uploadHeroImage(Request $request, string $slug): JsonResponse
+    public function uploadImage(Request $request, string $slug): JsonResponse
     {
         $event = Event::where('slug', $slug)->firstOrFail();
 
@@ -205,18 +200,99 @@ class EventController extends Controller
         ]);
 
         // Delete old image if exists
-        if ($event->hero_image) {
-            $this->imageService->deleteImage($event->hero_image);
+        if ($event->image) {
+            $this->imageService->deleteImage($event->image);
         }
 
         $path = $this->imageService->uploadHeroImage($request->file('image'), $event->slug);
 
-        $event->update(['hero_image' => $path]);
+        $event->update(['image' => $path]);
 
         return response()->json([
             'message' => 'Image uploaded successfully',
             'path' => $path,
             'url' => $this->imageService->getUrl($path),
+        ]);
+    }
+
+    public function addMedia(Request $request, string $slug): JsonResponse
+    {
+        $event = Event::where('slug', $slug)->firstOrFail();
+
+        $this->authorize('update', $event);
+
+        $request->validate([
+            'type' => 'required|in:image,youtube',
+            'file' => 'required_if:type,image|image|mimes:jpeg,png,webp|max:5120',
+            'url' => 'required_without:file|nullable|url',
+        ]);
+
+        $type = $request->type;
+
+        if ($type === 'image') {
+            if ($request->hasFile('file')) {
+                // Upload image file
+                $path = $this->imageService->uploadGalleryImage(
+                    $request->file('file'),
+                    $event->slug
+                );
+                $event->addImage([
+                    'type' => 'upload',
+                    'path' => $path,
+                    'url' => $this->imageService->getUrl($path),
+                ]);
+            } else {
+                // Add URL image
+                $event->addImage([
+                    'type' => 'url',
+                    'url' => $request->url,
+                ]);
+            }
+        } elseif ($type === 'youtube') {
+            $url = $request->url;
+            $videoId = $this->extractYoutubeVideoId($url);
+
+            $event->addVideo([
+                'type' => 'youtube',
+                'url' => $url,
+                'video_id' => $videoId,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Media added successfully',
+            'media' => $event->fresh()->media,
+        ]);
+    }
+
+    public function removeMedia(Request $request, string $slug): JsonResponse
+    {
+        $event = Event::where('slug', $slug)->firstOrFail();
+
+        $this->authorize('update', $event);
+
+        $request->validate([
+            'type' => 'required|in:images,videos',
+            'index' => 'required|integer|min:0',
+        ]);
+
+        $type = $request->type;
+        $index = $request->index;
+
+        // If it's an uploaded image, delete the file
+        $media = $event->media ?? ['images' => [], 'videos' => []];
+        if ($type === 'images' && isset($media['images'][$index])) {
+            $item = $media['images'][$index];
+            if ($item['type'] === 'upload' && isset($item['path'])) {
+                $this->imageService->deleteImage($item['path']);
+            }
+        }
+
+        $event->removeMediaItem($type, $index);
+
+        return response()->json([
+            'message' => 'Media removed successfully',
+            'media' => $event->fresh()->media,
         ]);
     }
 
@@ -240,5 +316,14 @@ class EventController extends Controller
                 'total' => $orders->total(),
             ],
         ]);
+    }
+
+    private function extractYoutubeVideoId(string $url): ?string
+    {
+        $pattern = '/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/';
+        if (preg_match($pattern, $url, $matches)) {
+            return $matches[1];
+        }
+        return null;
     }
 }

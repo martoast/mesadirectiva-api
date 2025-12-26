@@ -16,10 +16,17 @@ class TicketTier extends Model
         'name',
         'description',
         'price',
-        'early_bird_price',
-        'early_bird_deadline',
-        'max_quantity',
+        'quantity',
         'quantity_sold',
+        // Sales window (Eventbrite-style)
+        'sales_start',
+        'sales_end',
+        // Per-order limits
+        'min_per_order',
+        'max_per_order',
+        // Display options
+        'show_description',
+        'is_hidden',
         'sort_order',
         'is_active',
     ];
@@ -28,10 +35,14 @@ class TicketTier extends Model
     {
         return [
             'price' => 'decimal:2',
-            'early_bird_price' => 'decimal:2',
-            'early_bird_deadline' => 'datetime',
-            'max_quantity' => 'integer',
+            'quantity' => 'integer',
             'quantity_sold' => 'integer',
+            'sales_start' => 'datetime',
+            'sales_end' => 'datetime',
+            'min_per_order' => 'integer',
+            'max_per_order' => 'integer',
+            'show_description' => 'boolean',
+            'is_hidden' => 'boolean',
             'sort_order' => 'integer',
             'is_active' => 'boolean',
         ];
@@ -51,29 +62,33 @@ class TicketTier extends Model
 
     // Business Logic
 
-    public function getCurrentPrice(): float
-    {
-        if ($this->early_bird_price
-            && $this->early_bird_deadline
-            && now()->lt($this->early_bird_deadline)) {
-            return (float) $this->early_bird_price;
-        }
-        return (float) $this->price;
-    }
-
-    public function isEarlyBird(): bool
-    {
-        return $this->early_bird_price
-            && $this->early_bird_deadline
-            && now()->lt($this->early_bird_deadline);
-    }
-
     public function getAvailableQuantity(): ?int
     {
-        if ($this->max_quantity === null) {
+        if ($this->quantity === null) {
             return null; // Unlimited
         }
-        return max(0, $this->max_quantity - $this->quantity_sold);
+        return max(0, $this->quantity - $this->quantity_sold);
+    }
+
+    public function isOnSale(): bool
+    {
+        $now = now();
+
+        if ($this->sales_start && $now->lt($this->sales_start)) {
+            return false; // Sales haven't started
+        }
+
+        if ($this->sales_end && $now->gt($this->sales_end)) {
+            return false; // Sales have ended
+        }
+
+        return true;
+    }
+
+    public function isSoldOut(): bool
+    {
+        $available = $this->getAvailableQuantity();
+        return $available !== null && $available <= 0;
     }
 
     public function isAvailable(): bool
@@ -82,8 +97,79 @@ class TicketTier extends Model
             return false;
         }
 
-        $available = $this->getAvailableQuantity();
-        return $available === null || $available > 0;
+        if ($this->is_hidden) {
+            return false;
+        }
+
+        if (!$this->isOnSale()) {
+            return false;
+        }
+
+        if ($this->isSoldOut()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function getSalesStatus(): string
+    {
+        if (!$this->is_active) {
+            return 'inactive';
+        }
+
+        if ($this->is_hidden) {
+            return 'hidden';
+        }
+
+        $now = now();
+
+        if ($this->sales_start && $now->lt($this->sales_start)) {
+            return 'scheduled';
+        }
+
+        if ($this->sales_end && $now->gt($this->sales_end)) {
+            return 'ended';
+        }
+
+        if ($this->isSoldOut()) {
+            return 'sold_out';
+        }
+
+        return 'on_sale';
+    }
+
+    public function getTimeUntilSaleStarts(): ?int
+    {
+        if (!$this->sales_start) {
+            return null;
+        }
+
+        $now = now();
+        if ($now->gte($this->sales_start)) {
+            return 0;
+        }
+
+        return $now->diffInSeconds($this->sales_start);
+    }
+
+    public function getTimeUntilSaleEnds(): ?int
+    {
+        if (!$this->sales_end) {
+            return null;
+        }
+
+        $now = now();
+        if ($now->gte($this->sales_end)) {
+            return 0;
+        }
+
+        return $now->diffInSeconds($this->sales_end);
+    }
+
+    public function getCurrentPrice(): float
+    {
+        return (float) $this->price;
     }
 
     // Scopes
@@ -91,6 +177,25 @@ class TicketTier extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeVisible($query)
+    {
+        return $query->where('is_hidden', false);
+    }
+
+    public function scopeOnSale($query)
+    {
+        $now = now();
+        return $query
+            ->where(function ($q) use ($now) {
+                $q->whereNull('sales_start')
+                    ->orWhere('sales_start', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('sales_end')
+                    ->orWhere('sales_end', '>=', $now);
+            });
     }
 
     public function scopeOrdered($query)

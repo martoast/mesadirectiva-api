@@ -9,9 +9,9 @@ Thank you for your purchase, {{ $order->customer_name }}!
 
 **Event:** {{ $event->name }}
 
-**Date:** {{ $event->date->format('F j, Y') }} at {{ $event->time }}
+**Date:** {{ $event->starts_at?->format('F j, Y') }} at {{ $event->starts_at?->format('g:i A') }}
 
-**Location:** {{ $event->location }}
+**Location:** {{ $event->getLocationName() }}
 
 ---
 

@@ -26,100 +26,102 @@ class EventSeeder extends Seeder
         $gaEvent = Event::create([
             'group_id' => $generalGroup->id,
             'name' => 'Spring Concert 2025',
-            'description' => 'Join us for an amazing night of music featuring local bands and artists.',
-            'date' => now()->addMonths(1)->format('Y-m-d'),
-            'time' => '19:00',
-            'location' => 'City Amphitheater',
-            'price' => 50.00, // Legacy fallback price
-            'max_tickets' => 500,
-            'tickets_sold' => 0,
+            'description' => '<p>Join us for an amazing night of music featuring local bands and artists.</p><p>From rock to jazz, there\'s something for everyone. Food trucks, drinks, and good vibes included!</p>',
+            'image' => 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1920&q=80',
+
+            // Date/Time
+            'starts_at' => now()->addMonths(1)->setTime(19, 0),
+            'ends_at' => now()->addMonths(1)->setTime(23, 0),
+            'timezone' => 'America/Los_Angeles',
+
+            // Location
+            'location_type' => 'venue',
+            'location' => [
+                'name' => 'City Amphitheater',
+                'address' => '456 Park Avenue',
+                'city' => 'Los Angeles',
+                'state' => 'CA',
+                'country' => 'USA',
+                'postal_code' => '90001',
+                'map_url' => 'https://maps.google.com/?q=City+Amphitheater',
+            ],
+
+            // Media Gallery
+            'media' => [
+                'images' => [
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&q=80'],
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&q=80'],
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&q=80'],
+                ],
+                'videos' => [
+                    ['type' => 'youtube', 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'video_id' => 'dQw4w9WgXcQ'],
+                ],
+            ],
+
+            // Event Type
             'status' => 'live',
             'seating_type' => 'general_admission',
-            'registration_open' => true,
-            'registration_deadline' => now()->addMonths(1)->subDays(1),
+            'is_private' => false,
+            'show_remaining' => true,
 
-            // Hero Section
-            'hero_title' => 'Spring Concert 2025',
-            'hero_subtitle' => 'A Night of Music Under the Stars',
-            'hero_image' => 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1920&q=80',
-            'hero_cta_text' => 'Get Tickets Now',
+            // Organizer
+            'organizer_name' => 'City Music Foundation',
+            'organizer_description' => 'Bringing live music to the community since 2010. We organize concerts, festivals, and music education programs.',
 
-            // About Section
-            'about' => 'Experience live music like never before at our annual Spring Concert.',
-            'about_title' => 'Music for Everyone',
-            'about_content' => '<p>The Spring Concert is our <strong>annual celebration of music</strong> featuring the best local talent. From rock to jazz, there\'s something for everyone.</p><p>Food trucks, drinks, and good vibes included!</p>',
-            'about_image' => 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&q=80',
-            'about_image_position' => 'left',
-
-            // Highlights
-            'highlights' => [
-                ['icon' => 'music', 'title' => '5 Live Bands', 'description' => 'Local and regional artists performing live'],
-                ['icon' => 'utensils', 'title' => 'Food Trucks', 'description' => 'Variety of food options available'],
-                ['icon' => 'beer', 'title' => 'Drinks', 'description' => 'Full bar with local craft beers'],
-                ['icon' => 'star', 'title' => 'VIP Experience', 'description' => 'Exclusive areas for VIP ticket holders'],
-            ],
-
-            // Schedule
-            'schedule' => [
-                ['time' => '7:00 PM', 'title' => 'Gates Open', 'description' => 'Food and drinks available'],
-                ['time' => '7:30 PM', 'title' => 'Opening Act', 'description' => 'Local band performance'],
-                ['time' => '8:30 PM', 'title' => 'Main Acts', 'description' => 'Featured artists take the stage'],
-                ['time' => '11:00 PM', 'title' => 'Headliner', 'description' => 'Special guest performance'],
-            ],
-
-            'gallery_images' => [
-                'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&q=80',
-                'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&q=80',
-                'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&q=80',
-            ],
-
+            // FAQ
             'faq_items' => [
                 ['question' => 'Can I bring my own food?', 'answer' => 'Outside food is not permitted. Food trucks will be available on-site.'],
                 ['question' => 'Is there parking?', 'answer' => 'Free parking available at the venue.'],
                 ['question' => 'What if it rains?', 'answer' => 'The event is rain or shine. Bring a poncho if needed!'],
             ],
 
-            'venue_name' => 'City Amphitheater',
-            'venue_address' => '456 Park Avenue, Downtown',
-            'venue_map_url' => 'https://maps.google.com/?q=City+Amphitheater',
-            'contact_email' => 'concerts@example.com',
-            'contact_phone' => '+1 (555) 987-6543',
-
             'created_by' => $admin->id,
         ]);
 
-        // Add Ticket Tiers for General Admission Event
+        // Add Ticket Tiers with Eventbrite-style sales windows
         $gaEvent->ticketTiers()->createMany([
+            [
+                'name' => 'Early Bird',
+                'description' => 'Limited time pricing - get your tickets early and save!',
+                'price' => 35.00,
+                'quantity' => 100,
+                'quantity_sold' => 0,
+                'sales_start' => now(),
+                'sales_end' => now()->addWeeks(2),
+                'min_per_order' => 1,
+                'max_per_order' => 4,
+                'show_description' => true,
+                'is_hidden' => false,
+                'sort_order' => 1,
+                'is_active' => true,
+            ],
             [
                 'name' => 'General Admission',
                 'description' => 'Standard entry with access to all general areas',
                 'price' => 50.00,
-                'early_bird_price' => 35.00,
-                'early_bird_deadline' => now()->addWeeks(2),
-                'max_quantity' => 300,
+                'quantity' => 300,
                 'quantity_sold' => 0,
-                'sort_order' => 1,
+                'sales_start' => now()->addWeeks(2),
+                'sales_end' => now()->addMonths(1)->subDay(),
+                'min_per_order' => 1,
+                'max_per_order' => 10,
+                'show_description' => true,
+                'is_hidden' => false,
+                'sort_order' => 2,
                 'is_active' => true,
             ],
             [
                 'name' => 'VIP',
                 'description' => 'Priority entry, exclusive VIP area, complimentary drink',
                 'price' => 100.00,
-                'early_bird_price' => 80.00,
-                'early_bird_deadline' => now()->addWeeks(2),
-                'max_quantity' => 100,
+                'quantity' => 100,
                 'quantity_sold' => 0,
-                'sort_order' => 2,
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Premium',
-                'description' => 'All VIP benefits plus meet & greet with artists, premium seating',
-                'price' => 200.00,
-                'early_bird_price' => null, // No early bird for premium
-                'early_bird_deadline' => null,
-                'max_quantity' => 50,
-                'quantity_sold' => 0,
+                'sales_start' => now(),
+                'sales_end' => now()->addMonths(1)->subDay(),
+                'min_per_order' => 1,
+                'max_per_order' => 6,
+                'show_description' => true,
+                'is_hidden' => false,
                 'sort_order' => 3,
                 'is_active' => true,
             ],
@@ -153,71 +155,55 @@ class EventSeeder extends Seeder
         $seatedEvent = Event::create([
             'group_id' => $primariaGroup?->id ?? $generalGroup->id,
             'name' => 'Annual School Gala 2025',
-            'description' => 'Join us for an unforgettable evening celebrating our school community.',
-            'date' => now()->addMonths(2)->format('Y-m-d'),
-            'time' => '18:00',
-            'location' => 'Grand Ballroom, Hotel Marriott',
-            'price' => 150.00, // Not used for seated events, but required field
-            'max_tickets' => 200,
-            'tickets_sold' => 0,
+            'description' => '<p>The Annual School Gala is our <strong>premier fundraising event</strong> of the year. All proceeds go directly to supporting student scholarships and school improvements.</p><p>Join us for an unforgettable evening of fine dining, live entertainment, and community celebration. This year\'s theme celebrates 25 years of excellence in education.</p><ul><li>Gourmet dinner with wine pairings</li><li>Live music and dancing</li><li>Silent auction with exclusive items</li><li>Special recognition of outstanding students</li></ul>',
+            'image' => 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920&q=80',
+
+            // Date/Time
+            'starts_at' => now()->addMonths(2)->setTime(18, 0),
+            'ends_at' => now()->addMonths(2)->setTime(23, 59),
+            'timezone' => 'America/Los_Angeles',
+
+            // Location
+            'location_type' => 'venue',
+            'location' => [
+                'name' => 'Grand Ballroom at Hotel Marriott',
+                'address' => '123 Main Street',
+                'city' => 'Downtown City',
+                'state' => 'CA',
+                'country' => 'USA',
+                'postal_code' => '12345',
+                'map_url' => 'https://maps.google.com/?q=Hotel+Marriott+Downtown',
+            ],
+
+            // Media Gallery
+            'media' => [
+                'images' => [
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80'],
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80'],
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=600&q=80'],
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80'],
+                ],
+                'videos' => [],
+            ],
+
+            // Event Type
             'status' => 'live',
             'seating_type' => 'seated',
             'reservation_minutes' => 15,
-            'registration_open' => true,
-            'registration_deadline' => now()->addMonths(2)->subDays(3),
+            'is_private' => false,
+            'show_remaining' => true,
 
-            // Hero Section
-            'hero_title' => 'Annual School Gala 2025',
-            'hero_subtitle' => 'An Evening of Elegance and Community',
-            'hero_image' => 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920&q=80',
-            'hero_cta_text' => 'Reserve Your Table',
+            // Organizer
+            'organizer_name' => 'School Foundation',
+            'organizer_description' => 'Supporting educational excellence for over 25 years. Our foundation raises funds for scholarships, facilities, and educational programs.',
 
-            // About Section
-            'about' => 'The Annual School Gala is our premier fundraising event of the year.',
-            'about_title' => 'A Night to Remember',
-            'about_content' => '<p>The Annual School Gala is our <strong>premier fundraising event</strong> of the year. All proceeds go directly to supporting student scholarships and school improvements.</p><p>Join us for an unforgettable evening of fine dining, live entertainment, and community celebration. This year\'s theme celebrates 25 years of excellence in education.</p><ul><li>Gourmet dinner with wine pairings</li><li>Live music and dancing</li><li>Silent auction with exclusive items</li><li>Special recognition of outstanding students</li></ul>',
-            'about_image' => 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80',
-            'about_image_position' => 'right',
-
-            // Highlights Section
-            'highlights' => [
-                ['icon' => 'utensils', 'title' => 'Gourmet Dining', 'description' => 'Five-course meal prepared by award-winning chefs'],
-                ['icon' => 'music', 'title' => 'Live Entertainment', 'description' => 'Jazz quartet and DJ for dancing all night'],
-                ['icon' => 'gift', 'title' => 'Silent Auction', 'description' => 'Exclusive items and experiences up for bid'],
-                ['icon' => 'heart', 'title' => 'For a Good Cause', 'description' => '100% of proceeds support student scholarships'],
-            ],
-
-            // Schedule Section
-            'schedule' => [
-                ['time' => '6:00 PM', 'title' => 'Doors Open', 'description' => 'Welcome reception with cocktails and hors d\'oeuvres'],
-                ['time' => '7:00 PM', 'title' => 'Dinner Served', 'description' => 'Five-course gourmet dinner with wine pairings'],
-                ['time' => '8:30 PM', 'title' => 'Awards Ceremony', 'description' => 'Recognition of outstanding students and faculty'],
-                ['time' => '9:00 PM', 'title' => 'Live Auction', 'description' => 'Bid on exclusive experiences and items'],
-                ['time' => '10:00 PM', 'title' => 'Dancing', 'description' => 'Live band and DJ until midnight'],
-            ],
-
-            // Gallery Section
-            'gallery_images' => [
-                'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80',
-                'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80',
-                'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=600&q=80',
-                'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80',
-            ],
-
-            // FAQ Section
+            // FAQ
             'faq_items' => [
                 ['question' => 'What is the dress code?', 'answer' => 'Black tie optional. We encourage guests to dress elegantly for this special evening.'],
                 ['question' => 'Is parking available?', 'answer' => 'Complimentary valet parking is included with your ticket. Self-parking is also available in the hotel garage.'],
                 ['question' => 'Can I purchase individual seats?', 'answer' => 'Yes! You can purchase individual seats or reserve an entire table for your group.'],
                 ['question' => 'Are dietary restrictions accommodated?', 'answer' => 'Yes! Please indicate any dietary restrictions when purchasing your tickets, and our chefs will prepare an alternative meal.'],
             ],
-
-            // Venue & Contact
-            'venue_name' => 'Grand Ballroom at Hotel Marriott',
-            'venue_address' => '123 Main Street, Downtown City, ST 12345',
-            'venue_map_url' => 'https://maps.google.com/?q=Hotel+Marriott+Downtown',
-            'contact_email' => 'gala@school.edu',
-            'contact_phone' => '+1 (555) 123-4567',
 
             'created_by' => $admin->id,
         ]);
@@ -299,64 +285,188 @@ class EventSeeder extends Seeder
         $this->command->info("  - {$seatCount} individual seats created");
 
         // ========================================
-        // EVENT 3: Draft General Admission Event
+        // EVENT 3: Online Event (Webinar)
         // ========================================
-        $draftEvent = Event::create([
+        $onlineEvent = Event::create([
             'group_id' => $generalGroup->id,
-            'name' => 'Summer Festival 2025',
-            'description' => 'Coming soon - our biggest outdoor festival yet!',
-            'date' => now()->addMonths(4)->format('Y-m-d'),
-            'time' => '12:00',
-            'location' => 'Central Park',
-            'price' => 75.00,
-            'max_tickets' => 1000,
-            'tickets_sold' => 0,
-            'status' => 'draft', // Not yet published
+            'name' => 'Digital Marketing Workshop 2025',
+            'description' => '<p>Join us for an interactive online workshop where industry experts share the latest digital marketing strategies.</p><p>Learn about SEO, social media marketing, content strategy, and more from the comfort of your home.</p>',
+            'image' => 'https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=1920&q=80',
+
+            // Date/Time
+            'starts_at' => now()->addWeeks(3)->setTime(10, 0),
+            'ends_at' => now()->addWeeks(3)->setTime(16, 0),
+            'timezone' => 'America/Los_Angeles',
+
+            // Location - Online Event
+            'location_type' => 'online',
+            'location' => [
+                'platform' => 'Zoom',
+                'url' => 'https://zoom.us/j/123456789',
+                'instructions' => 'The Zoom link will be sent to registered attendees 1 hour before the event. Make sure to have Zoom installed on your device.',
+            ],
+
+            // Media Gallery
+            'media' => [
+                'images' => [
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=600&q=80'],
+                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80'],
+                ],
+                'videos' => [],
+            ],
+
+            // Event Type
+            'status' => 'live',
             'seating_type' => 'general_admission',
-            'registration_open' => false,
-            'registration_deadline' => now()->addMonths(4)->subDays(7),
+            'is_private' => false,
+            'show_remaining' => true,
 
-            'hero_title' => 'Summer Festival 2025',
-            'hero_subtitle' => 'The Ultimate Outdoor Experience',
-            'hero_image' => 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&q=80',
-            'hero_cta_text' => 'Coming Soon',
+            // Organizer
+            'organizer_name' => 'Digital Skills Academy',
+            'organizer_description' => 'Providing top-quality online education in digital marketing, web development, and business strategy since 2018.',
 
-            'about' => 'Get ready for an all-day festival featuring music, food, and fun!',
-            'about_title' => 'Save the Date',
-            'about_content' => '<p>More details coming soon...</p>',
+            // FAQ
+            'faq_items' => [
+                ['question' => 'Do I need any special software?', 'answer' => 'You\'ll need Zoom installed on your computer or mobile device. A stable internet connection is recommended.'],
+                ['question' => 'Will there be recordings available?', 'answer' => 'Yes! All registered attendees will receive access to the workshop recordings within 48 hours.'],
+                ['question' => 'Can I ask questions during the workshop?', 'answer' => 'There will be Q&A sessions after each module where you can interact with the instructors.'],
+            ],
 
             'created_by' => $admin->id,
         ]);
 
-        // Add placeholder tiers for draft event
+        // Add Ticket Tiers for Online Event
+        $onlineEvent->ticketTiers()->createMany([
+            [
+                'name' => 'Free Registration',
+                'description' => 'Basic access to live workshop sessions',
+                'price' => 0.00,
+                'quantity' => 500,
+                'quantity_sold' => 0,
+                'sales_start' => now(),
+                'sales_end' => now()->addWeeks(3)->subHour(),
+                'min_per_order' => 1,
+                'max_per_order' => 1,
+                'show_description' => true,
+                'is_hidden' => false,
+                'sort_order' => 1,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Premium Access',
+                'description' => 'Full workshop access plus recordings, downloadable materials, and certificate',
+                'price' => 49.00,
+                'quantity' => 200,
+                'quantity_sold' => 0,
+                'sales_start' => now(),
+                'sales_end' => now()->addWeeks(3)->subHour(),
+                'min_per_order' => 1,
+                'max_per_order' => 5,
+                'show_description' => true,
+                'is_hidden' => false,
+                'sort_order' => 2,
+                'is_active' => true,
+            ],
+        ]);
+
+        $this->command->info("Created Online event: {$onlineEvent->name} (slug: {$onlineEvent->slug})");
+
+        // ========================================
+        // EVENT 4: Draft General Admission Event
+        // ========================================
+        $draftEvent = Event::create([
+            'group_id' => $generalGroup->id,
+            'name' => 'Summer Festival 2025',
+            'description' => '<p>Coming soon - our biggest outdoor festival yet!</p><p>More details will be announced soon. Save the date!</p>',
+            'image' => 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&q=80',
+
+            // Date/Time
+            'starts_at' => now()->addMonths(4)->setTime(12, 0),
+            'ends_at' => now()->addMonths(4)->setTime(23, 0),
+            'timezone' => 'America/Los_Angeles',
+
+            // Location
+            'location_type' => 'venue',
+            'location' => [
+                'name' => 'Central Park',
+                'address' => 'Central Park West',
+                'city' => 'Los Angeles',
+                'state' => 'CA',
+            ],
+
+            // Event Type
+            'status' => 'draft', // Not yet published
+            'seating_type' => 'general_admission',
+            'is_private' => false,
+            'show_remaining' => true,
+
+            // Organizer
+            'organizer_name' => 'City Events Committee',
+            'organizer_description' => 'Organizing community events and festivals since 2005.',
+
+            'created_by' => $admin->id,
+        ]);
+
+        // Add placeholder tiers for draft event (sales dates in the future)
         $draftEvent->ticketTiers()->createMany([
             [
-                'name' => 'Early Bird',
-                'description' => 'Limited early bird pricing',
-                'price' => 75.00,
-                'early_bird_price' => 50.00,
-                'early_bird_deadline' => now()->addMonths(3),
-                'max_quantity' => 200,
+                'name' => 'Super Early Bird',
+                'description' => 'Limited super early bird pricing - first 100 tickets only!',
+                'price' => 50.00,
+                'quantity' => 100,
                 'quantity_sold' => 0,
+                'sales_start' => now()->addMonths(2),
+                'sales_end' => now()->addMonths(3),
+                'min_per_order' => 1,
+                'max_per_order' => 4,
+                'show_description' => true,
+                'is_hidden' => false,
                 'sort_order' => 1,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Early Bird',
+                'description' => 'Early bird pricing',
+                'price' => 65.00,
+                'quantity' => 200,
+                'quantity_sold' => 0,
+                'sales_start' => now()->addMonths(3),
+                'sales_end' => now()->addMonths(3)->addWeeks(2),
+                'min_per_order' => 1,
+                'max_per_order' => 6,
+                'show_description' => false,
+                'is_hidden' => false,
+                'sort_order' => 2,
                 'is_active' => true,
             ],
             [
                 'name' => 'Regular',
                 'description' => 'Standard festival admission',
                 'price' => 75.00,
-                'max_quantity' => 500,
+                'quantity' => 500,
                 'quantity_sold' => 0,
-                'sort_order' => 2,
+                'sales_start' => now()->addMonths(3)->addWeeks(2),
+                'sales_end' => now()->addMonths(4)->subDay(),
+                'min_per_order' => 1,
+                'max_per_order' => 10,
+                'show_description' => false,
+                'is_hidden' => false,
+                'sort_order' => 3,
                 'is_active' => true,
             ],
             [
                 'name' => 'VIP All-Access',
-                'description' => 'VIP areas, backstage access, premium amenities',
+                'description' => 'VIP areas, backstage access, premium amenities, free food and drinks',
                 'price' => 150.00,
-                'max_quantity' => 100,
+                'quantity' => 100,
                 'quantity_sold' => 0,
-                'sort_order' => 3,
+                'sales_start' => now()->addMonths(2),
+                'sales_end' => now()->addMonths(4)->subDay(),
+                'min_per_order' => 1,
+                'max_per_order' => 4,
+                'show_description' => true,
+                'is_hidden' => false,
+                'sort_order' => 4,
                 'is_active' => true,
             ],
         ]);
@@ -366,11 +476,12 @@ class EventSeeder extends Seeder
         $this->command->newLine();
         $this->command->info('Event seeding complete!');
         $this->command->table(
-            ['Event', 'Type', 'Status', 'Slug'],
+            ['Event', 'Type', 'Location', 'Status', 'Slug'],
             [
-                [$gaEvent->name, 'General Admission', 'live', $gaEvent->slug],
-                [$seatedEvent->name, 'Seated', 'live', $seatedEvent->slug],
-                [$draftEvent->name, 'General Admission', 'draft', $draftEvent->slug],
+                [$gaEvent->name, 'General Admission', 'Venue', 'live', $gaEvent->slug],
+                [$seatedEvent->name, 'Seated', 'Venue', 'live', $seatedEvent->slug],
+                [$onlineEvent->name, 'General Admission', 'Online', 'live', $onlineEvent->slug],
+                [$draftEvent->name, 'General Admission', 'Venue', 'draft', $draftEvent->slug],
             ]
         );
     }

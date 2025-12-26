@@ -13,14 +13,15 @@ use Illuminate\Http\Request;
 class PublicEventController extends Controller
 {
     /**
-     * List all live events
+     * List all live public events
      * GET /api/public/events
      */
     public function index(Request $request): JsonResponse
     {
         $query = Event::live()
+            ->public()
             ->with('group')
-            ->orderBy('date', 'asc');
+            ->orderBy('starts_at', 'asc');
 
         if ($request->has('group')) {
             $query->whereHas('group', function ($q) use ($request) {
@@ -49,7 +50,7 @@ class PublicEventController extends Controller
     {
         $event = Event::where('slug', $slug)
             ->live()
-            ->with(['group', 'activeItems'])
+            ->with(['group', 'activeItems', 'availableTicketTiers'])
             ->firstOrFail();
 
         return response()->json([
@@ -72,8 +73,9 @@ class PublicEventController extends Controller
             'can_purchase' => $event->canPurchase(),
             'blocked_reason' => $event->getPurchaseBlockedReason(),
             'seating_type' => $event->seating_type ?? 'general_admission',
-            'registration_open' => $event->registration_open,
-            'registration_deadline' => $event->registration_deadline,
+            'starts_at' => $event->starts_at,
+            'ends_at' => $event->ends_at,
+            'timezone' => $event->timezone,
         ];
 
         if ($event->isSeated()) {
@@ -94,7 +96,8 @@ class PublicEventController extends Controller
             });
         } else {
             // General admission - show tiers
-            $response['tickets_available'] = $event->getTicketsAvailable();
+            $response['tickets_available'] = $event->getTotalTicketsAvailable();
+            $response['tickets_sold'] = $event->getTotalTicketsSold();
             $response['tiers'] = TicketTierResource::collection($event->activeTicketTiers);
         }
 

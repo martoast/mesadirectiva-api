@@ -82,8 +82,8 @@ class ReportService
 
         return [
             'event' => $event,
-            'tickets_sold' => $event->tickets_sold,
-            'tickets_available' => $event->getTicketsAvailable(),
+            'tickets_sold' => $event->getTotalTicketsSold(),
+            'tickets_available' => $event->getTotalTicketsAvailable(),
             'revenue' => round($revenue, 2),
             'orders_count' => $ordersCount,
             'sales_by_day' => $salesByDay,

@@ -18,39 +18,28 @@ class Event extends Model
         'group_id',
         'name',
         'description',
-        'date',
-        'time',
+        'image',
+        // Date/Time
+        'starts_at',
+        'ends_at',
+        'timezone',
+        // Location
+        'location_type',
         'location',
-        'price',
-        'max_tickets',
-        'tickets_sold',
-        'status',
+        // Media gallery
+        'media',
+        // Event type
         'seating_type',
         'reservation_minutes',
-        'registration_open',
-        'registration_deadline',
-        // Hero Section
-        'hero_title',
-        'hero_subtitle',
-        'hero_image',
-        'hero_cta_text',
-        // About Section
-        'about',
-        'about_title',
-        'about_content',
-        'about_image',
-        'about_image_position',
-        // Rich Content Sections
-        'highlights',
-        'schedule',
-        'gallery_images',
+        // Settings
+        'status',
+        'is_private',
+        'show_remaining',
+        // Organizer
+        'organizer_name',
+        'organizer_description',
+        // Content
         'faq_items',
-        // Venue & Contact
-        'venue_name',
-        'venue_address',
-        'venue_map_url',
-        'contact_email',
-        'contact_phone',
         // Stripe
         'stripe_product_id',
         'stripe_price_id',
@@ -60,18 +49,14 @@ class Event extends Model
     protected function casts(): array
     {
         return [
-            'date' => 'date',
-            'price' => 'decimal:2',
-            'max_tickets' => 'integer',
-            'tickets_sold' => 'integer',
-            'reservation_minutes' => 'integer',
-            'registration_open' => 'boolean',
-            'registration_deadline' => 'datetime',
-            // JSON fields for rich content
-            'highlights' => 'array',
-            'schedule' => 'array',
-            'gallery_images' => 'array',
+            'starts_at' => 'datetime',
+            'ends_at' => 'datetime',
+            'location' => 'array',
+            'media' => 'array',
             'faq_items' => 'array',
+            'reservation_minutes' => 'integer',
+            'is_private' => 'boolean',
+            'show_remaining' => 'boolean',
         ];
     }
 
@@ -146,6 +131,24 @@ class Event extends Model
             ->orderBy('id');
     }
 
+    public function availableTicketTiers(): HasMany
+    {
+        $now = now();
+        return $this->hasMany(TicketTier::class)
+            ->where('is_active', true)
+            ->where('is_hidden', false)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('sales_start')
+                    ->orWhere('sales_start', '<=', $now);
+            })
+            ->where(function ($query) use ($now) {
+                $query->whereNull('sales_end')
+                    ->orWhere('sales_end', '>=', $now);
+            })
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function tables(): HasMany
     {
         return $this->hasMany(Table::class);
@@ -168,25 +171,24 @@ class Event extends Model
         return $this->seating_type === 'general_admission';
     }
 
+    public function isOnline(): bool
+    {
+        return $this->location_type === 'online';
+    }
+
+    public function isVenue(): bool
+    {
+        return $this->location_type === 'venue';
+    }
+
     public function canPurchase(): bool
     {
         if ($this->status !== 'live') {
             return false;
         }
 
-        if (!$this->registration_open) {
-            return false;
-        }
-
-        if ($this->registration_deadline && now()->isAfter($this->registration_deadline)) {
-            return false;
-        }
-
-        if ($this->tickets_sold >= $this->max_tickets) {
-            return false;
-        }
-
-        return true;
+        // Check if any ticket tiers are available
+        return $this->availableTicketTiers()->exists();
     }
 
     public function getPurchaseBlockedReason(): ?string
@@ -195,24 +197,21 @@ class Event extends Model
             return 'not_live';
         }
 
-        if (!$this->registration_open) {
-            return 'registration_closed';
-        }
-
-        if ($this->registration_deadline && now()->isAfter($this->registration_deadline)) {
-            return 'deadline_passed';
-        }
-
-        if ($this->tickets_sold >= $this->max_tickets) {
-            return 'sold_out';
+        if (!$this->availableTicketTiers()->exists()) {
+            return 'no_available_tickets';
         }
 
         return null;
     }
 
-    public function getTicketsAvailable(): int
+    public function getTotalTicketsAvailable(): int
     {
-        return max(0, $this->max_tickets - $this->tickets_sold);
+        return $this->activeTicketTiers->sum(fn ($tier) => $tier->getAvailableQuantity() ?? PHP_INT_MAX);
+    }
+
+    public function getTotalTicketsSold(): int
+    {
+        return $this->activeTicketTiers->sum('quantity_sold');
     }
 
     public function getRevenue(): float
@@ -220,11 +219,87 @@ class Event extends Model
         return (float) $this->completedOrders()->sum('total');
     }
 
+    // Media helpers
+
+    public function getImages(): array
+    {
+        return $this->media['images'] ?? [];
+    }
+
+    public function getVideos(): array
+    {
+        return $this->media['videos'] ?? [];
+    }
+
+    public function addImage(array $image): void
+    {
+        $media = $this->media ?? ['images' => [], 'videos' => []];
+        $media['images'][] = $image;
+        $this->media = $media;
+        $this->save();
+    }
+
+    public function addVideo(array $video): void
+    {
+        $media = $this->media ?? ['images' => [], 'videos' => []];
+        $media['videos'][] = $video;
+        $this->media = $media;
+        $this->save();
+    }
+
+    public function removeMediaItem(string $type, int $index): void
+    {
+        $media = $this->media ?? ['images' => [], 'videos' => []];
+        if (isset($media[$type][$index])) {
+            array_splice($media[$type], $index, 1);
+            $this->media = $media;
+            $this->save();
+        }
+    }
+
+    // Location helpers
+
+    public function getLocationName(): ?string
+    {
+        if ($this->isOnline()) {
+            return $this->location['platform'] ?? 'Online Event';
+        }
+        return $this->location['name'] ?? null;
+    }
+
+    public function getLocationAddress(): ?string
+    {
+        if ($this->isOnline()) {
+            return null;
+        }
+        $location = $this->location;
+        if (!$location) {
+            return null;
+        }
+        $parts = array_filter([
+            $location['address'] ?? null,
+            $location['city'] ?? null,
+            $location['state'] ?? null,
+            $location['postal_code'] ?? null,
+        ]);
+        return implode(', ', $parts);
+    }
+
     // Scopes
 
     public function scopeLive($query)
     {
         return $query->where('status', 'live');
+    }
+
+    public function scopePublic($query)
+    {
+        return $query->where('is_private', false);
+    }
+
+    public function scopeUpcoming($query)
+    {
+        return $query->where('starts_at', '>=', now());
     }
 
     public function scopeAccessibleBy($query, User $user)
