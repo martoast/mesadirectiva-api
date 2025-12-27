@@ -6,6 +6,8 @@ use App\Models\Event;
 use App\Models\Group;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class EventSeeder extends Seeder
 {
@@ -27,7 +29,7 @@ class EventSeeder extends Seeder
             'group_id' => $generalGroup->id,
             'name' => 'Spring Concert 2025',
             'description' => '<p>Join us for an amazing night of music featuring local bands and artists.</p><p>From rock to jazz, there\'s something for everyone. Food trucks, drinks, and good vibes included!</p>',
-            'image' => 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1920&q=80',
+            'image' => $this->copyPlaceholderImage('spring-concert-2025', 'hero'),
 
             // Date/Time
             'starts_at' => now()->addMonths(1)->setTime(19, 0),
@@ -48,11 +50,7 @@ class EventSeeder extends Seeder
 
             // Media Gallery
             'media' => [
-                'images' => [
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&q=80'],
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&q=80'],
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&q=80'],
-                ],
+                'images' => $this->createGalleryImages('spring-concert-2025', 3),
                 'videos' => [
                     ['type' => 'youtube', 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'video_id' => 'dQw4w9WgXcQ'],
                 ],
@@ -156,7 +154,7 @@ class EventSeeder extends Seeder
             'group_id' => $primariaGroup?->id ?? $generalGroup->id,
             'name' => 'Annual School Gala 2025',
             'description' => '<p>The Annual School Gala is our <strong>premier fundraising event</strong> of the year. All proceeds go directly to supporting student scholarships and school improvements.</p><p>Join us for an unforgettable evening of fine dining, live entertainment, and community celebration. This year\'s theme celebrates 25 years of excellence in education.</p><ul><li>Gourmet dinner with wine pairings</li><li>Live music and dancing</li><li>Silent auction with exclusive items</li><li>Special recognition of outstanding students</li></ul>',
-            'image' => 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920&q=80',
+            'image' => $this->copyPlaceholderImage('annual-school-gala-2025', 'hero'),
 
             // Date/Time
             'starts_at' => now()->addMonths(2)->setTime(18, 0),
@@ -177,12 +175,7 @@ class EventSeeder extends Seeder
 
             // Media Gallery
             'media' => [
-                'images' => [
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80'],
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80'],
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=600&q=80'],
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80'],
-                ],
+                'images' => $this->createGalleryImages('annual-school-gala-2025', 4),
                 'videos' => [],
             ],
 
@@ -291,7 +284,7 @@ class EventSeeder extends Seeder
             'group_id' => $generalGroup->id,
             'name' => 'Digital Marketing Workshop 2025',
             'description' => '<p>Join us for an interactive online workshop where industry experts share the latest digital marketing strategies.</p><p>Learn about SEO, social media marketing, content strategy, and more from the comfort of your home.</p>',
-            'image' => 'https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=1920&q=80',
+            'image' => $this->copyPlaceholderImage('digital-marketing-workshop-2025', 'hero'),
 
             // Date/Time
             'starts_at' => now()->addWeeks(3)->setTime(10, 0),
@@ -308,10 +301,7 @@ class EventSeeder extends Seeder
 
             // Media Gallery
             'media' => [
-                'images' => [
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=600&q=80'],
-                    ['type' => 'url', 'url' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80'],
-                ],
+                'images' => $this->createGalleryImages('digital-marketing-workshop-2025', 2),
                 'videos' => [],
             ],
 
@@ -378,7 +368,7 @@ class EventSeeder extends Seeder
             'group_id' => $generalGroup->id,
             'name' => 'Summer Festival 2025',
             'description' => '<p>Coming soon - our biggest outdoor festival yet!</p><p>More details will be announced soon. Save the date!</p>',
-            'image' => 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&q=80',
+            'image' => $this->copyPlaceholderImage('summer-festival-2025', 'hero'),
 
             // Date/Time
             'starts_at' => now()->addMonths(4)->setTime(12, 0),
@@ -392,6 +382,12 @@ class EventSeeder extends Seeder
                 'address' => 'Central Park West',
                 'city' => 'Los Angeles',
                 'state' => 'CA',
+            ],
+
+            // Media Gallery
+            'media' => [
+                'images' => $this->createGalleryImages('summer-festival-2025', 2),
+                'videos' => [],
             ],
 
             // Event Type
@@ -484,5 +480,69 @@ class EventSeeder extends Seeder
                 [$draftEvent->name, 'General Admission', 'Venue', 'draft', $draftEvent->slug],
             ]
         );
+    }
+
+    /**
+     * Copy the placeholder image to storage for an event's hero image
+     */
+    private function copyPlaceholderImage(string $eventSlug, string $type = 'hero'): string
+    {
+        $placeholderPath = public_path('placeholder.png');
+
+        if (!file_exists($placeholderPath)) {
+            $this->command->warn("Placeholder image not found at {$placeholderPath}");
+            return '';
+        }
+
+        $filename = sprintf(
+            'events/%s/%s-%s.png',
+            $eventSlug,
+            $type,
+            Str::random(8)
+        );
+
+        $disk = config('filesystems.media_disk', 'public');
+        Storage::disk($disk)->put($filename, file_get_contents($placeholderPath), 'public');
+
+        $this->command->line("  -> Created image: {$filename}");
+
+        return $filename;
+    }
+
+    /**
+     * Create multiple gallery images for an event
+     */
+    private function createGalleryImages(string $eventSlug, int $count = 3): array
+    {
+        $images = [];
+        $placeholderPath = public_path('placeholder.png');
+
+        if (!file_exists($placeholderPath)) {
+            $this->command->warn("Placeholder image not found at {$placeholderPath}");
+            return $images;
+        }
+
+        $disk = config('filesystems.media_disk', 'public');
+
+        for ($i = 1; $i <= $count; $i++) {
+            $filename = sprintf(
+                'events/%s/gallery/image-%d-%s.png',
+                $eventSlug,
+                $i,
+                Str::random(8)
+            );
+
+            Storage::disk($disk)->put($filename, file_get_contents($placeholderPath), 'public');
+
+            $images[] = [
+                'type' => 'upload',
+                'path' => $filename,
+                'url' => Storage::disk($disk)->url($filename),
+            ];
+        }
+
+        $this->command->line("  -> Created {$count} gallery images");
+
+        return $images;
     }
 }
