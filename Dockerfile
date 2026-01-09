@@ -55,6 +55,23 @@ RUN useradd -ms /bin/bash --no-user-group -g $WWWGROUP -u 1337 sail
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock ./
+
+# Install composer dependencies
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+# Copy the rest of the application
+COPY . .
+
+# Generate optimized autoload and run post-install scripts
+RUN composer dump-autoload --optimize
+
+# Ensure storage directories exist and set permissions
+RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chown -R sail:sail /var/www/html \
+    && chmod -R 775 storage bootstrap/cache
+
 EXPOSE 80
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
