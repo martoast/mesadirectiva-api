@@ -28,17 +28,24 @@ class CreateCheckoutRequest extends FormRequest
         $event = Event::where('slug', $this->input('event_slug'))->first();
 
         if ($event && $event->isSeated()) {
-            // Seated event rules
+            // Seated event rules - tables and seats as objects with attendee info
             $rules['tables'] = 'nullable|array';
-            $rules['tables.*'] = 'integer|exists:tables,id';
+            $rules['tables.*.id'] = 'required|integer|exists:tables,id';
+            $rules['tables.*.attendee_name'] = 'nullable|string|max:255';
+            $rules['tables.*.attendee_note'] = 'nullable|string|max:500';
             $rules['seats'] = 'nullable|array';
-            $rules['seats.*'] = 'integer|exists:seats,id';
+            $rules['seats.*.id'] = 'required|integer|exists:seats,id';
+            $rules['seats.*.attendee_name'] = 'nullable|string|max:255';
+            $rules['seats.*.attendee_note'] = 'nullable|string|max:500';
             $rules['reservation_token'] = 'required|string';
         } else {
-            // General admission rules
+            // General admission rules - tiers with optional attendee info per ticket
             $rules['tiers'] = 'nullable|array';
             $rules['tiers.*.tier_id'] = 'required|integer|exists:ticket_tiers,id';
             $rules['tiers.*.quantity'] = 'required|integer|min:1|max:10';
+            $rules['tiers.*.attendees'] = 'nullable|array';
+            $rules['tiers.*.attendees.*.name'] = 'nullable|string|max:255';
+            $rules['tiers.*.attendees.*.note'] = 'nullable|string|max:500';
             // Keep legacy support for simple tickets
             $rules['tickets'] = 'nullable|integer|min:1|max:10';
         }
@@ -59,7 +66,11 @@ class CreateCheckoutRequest extends FormRequest
                 $tables = $this->input('tables', []);
                 $seats = $this->input('seats', []);
 
-                if (empty($tables) && empty($seats)) {
+                // Extract IDs from objects
+                $tableIds = array_column($tables, 'id');
+                $seatIds = array_column($seats, 'id');
+
+                if (empty($tableIds) && empty($seatIds)) {
                     $validator->errors()->add('tables', 'You must select at least one table or seat.');
                 }
             } else {

@@ -442,6 +442,8 @@ File uploads are:
   "ticket_tier_id": 1,
   "seat_id": null,
   "table_id": null,
+  "attendee_name": "John Doe",
+  "attendee_note": "Vegetarian, needs wheelchair access",
   "ticket_tier": TicketTierResource,
   "seat": SeatResource,
   "table": TableResource
@@ -892,7 +894,14 @@ POST /checkout/create-session
   "customer_email": "jane@example.com",
   "customer_phone": "+1234567890",
   "tiers": [
-    { "tier_id": 1, "quantity": 2 },
+    {
+      "tier_id": 1,
+      "quantity": 2,
+      "attendees": [
+        { "name": "John Doe", "note": "Vegetarian" },
+        { "name": "Jane Doe", "note": "" }
+      ]
+    },
     { "tier_id": 2, "quantity": 1 }
   ],
   "extra_items": [
@@ -920,8 +929,14 @@ POST /checkout/create-session
   "customer_name": "Jane Smith",
   "customer_email": "jane@example.com",
   "customer_phone": "+1234567890",
-  "tables": [1],
-  "seats": [5, 6, 7],
+  "tables": [
+    { "id": 1, "attendee_name": "Table Host", "attendee_note": "Main contact" }
+  ],
+  "seats": [
+    { "id": 5, "attendee_name": "John Doe", "attendee_note": "Aisle seat preferred" },
+    { "id": 6, "attendee_name": "Jane Smith", "attendee_note": "" },
+    { "id": 7, "attendee_name": "Bob Wilson", "attendee_note": "Vegetarian" }
+  ],
   "reservation_token": "550e8400-e29b-41d4-a716-446655440000",
   "extra_items": [
     { "item_id": 1, "quantity": 2 }

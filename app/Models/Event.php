@@ -187,7 +187,12 @@ class Event extends Model
             return false;
         }
 
-        // Check if any ticket tiers are available
+        if ($this->isSeated()) {
+            // For seated events, check if any tables or seats are available
+            return $this->hasAvailableTablesOrSeats();
+        }
+
+        // For general admission, check if any ticket tiers are available
         return $this->availableTicketTiers()->exists();
     }
 
@@ -197,20 +202,121 @@ class Event extends Model
             return 'not_live';
         }
 
-        if (!$this->availableTicketTiers()->exists()) {
-            return 'no_available_tickets';
+        if ($this->isSeated()) {
+            if (!$this->hasAvailableTablesOrSeats()) {
+                return 'no_available_seats';
+            }
+        } else {
+            if (!$this->availableTicketTiers()->exists()) {
+                return 'no_available_tickets';
+            }
         }
 
         return null;
     }
 
+    /**
+     * Check if there are any available tables (whole) or seats (individual) for seated events
+     */
+    public function hasAvailableTablesOrSeats(): bool
+    {
+        // Check for available whole tables
+        $hasAvailableTables = $this->activeTables()
+            ->where('sell_as_whole', true)
+            ->where('status', 'available')
+            ->exists();
+
+        if ($hasAvailableTables) {
+            return true;
+        }
+
+        // Check for available individual seats
+        $tablesWithIndividualSeats = $this->activeTables()
+            ->where('sell_as_whole', false)
+            ->get();
+
+        foreach ($tablesWithIndividualSeats as $table) {
+            if ($table->activeSeats()->where('status', 'available')->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get total available seats/tables count for seated events
+     */
+    public function getTotalSeatsAvailable(): int
+    {
+        $count = 0;
+
+        // Count available whole tables (as capacity)
+        $wholeTables = $this->activeTables()
+            ->where('sell_as_whole', true)
+            ->where('status', 'available')
+            ->get();
+
+        foreach ($wholeTables as $table) {
+            $count += $table->capacity;
+        }
+
+        // Count available individual seats
+        $tablesWithIndividualSeats = $this->activeTables()
+            ->where('sell_as_whole', false)
+            ->get();
+
+        foreach ($tablesWithIndividualSeats as $table) {
+            $count += $table->activeSeats()->where('status', 'available')->count();
+        }
+
+        return $count;
+    }
+
+    /**
+     * Get total sold seats/tables count for seated events
+     */
+    public function getTotalSeatsSold(): int
+    {
+        $count = 0;
+
+        // Count sold whole tables (as capacity)
+        $soldWholeTables = $this->activeTables()
+            ->where('sell_as_whole', true)
+            ->where('status', 'sold')
+            ->get();
+
+        foreach ($soldWholeTables as $table) {
+            $count += $table->capacity;
+        }
+
+        // Count sold individual seats
+        $tablesWithIndividualSeats = $this->activeTables()
+            ->where('sell_as_whole', false)
+            ->get();
+
+        foreach ($tablesWithIndividualSeats as $table) {
+            $count += $table->activeSeats()->where('status', 'sold')->count();
+        }
+
+        return $count;
+    }
+
     public function getTotalTicketsAvailable(): int
     {
+        if ($this->isSeated()) {
+            return $this->getTotalSeatsAvailable();
+        }
+
         return $this->activeTicketTiers->sum(fn ($tier) => $tier->getAvailableQuantity() ?? PHP_INT_MAX);
     }
 
     public function getTotalTicketsSold(): int
     {
+        if ($this->isSeated()) {
+            return $this->getTotalSeatsSold();
+        }
+
         return $this->activeTicketTiers->sum('quantity_sold');
     }
 

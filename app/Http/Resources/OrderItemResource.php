@@ -20,6 +20,8 @@ class OrderItemResource extends JsonResource
             'ticket_tier_id' => $this->ticket_tier_id,
             'seat_id' => $this->seat_id,
             'table_id' => $this->table_id,
+            'attendee_name' => $this->attendee_name,
+            'attendee_note' => $this->attendee_note,
             'ticket_tier' => new TicketTierResource($this->whenLoaded('ticketTier')),
             'seat' => new SeatResource($this->whenLoaded('seat')),
             'table' => new TableResource($this->whenLoaded('table')),

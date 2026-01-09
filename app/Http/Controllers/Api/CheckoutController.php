@@ -86,6 +86,7 @@ class CheckoutController extends Controller
                     'tier' => $tier,
                     'quantity' => $tierData['quantity'],
                     'price' => $price,
+                    'attendees' => $tierData['attendees'] ?? [],
                 ];
             }
         } elseif ($legacyTickets > 0) {
@@ -148,15 +149,36 @@ class CheckoutController extends Controller
 
             foreach ($lineItemsData as $lineItem) {
                 if ($lineItem['type'] === 'tier') {
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'item_type' => 'ticket',
-                        'ticket_tier_id' => $lineItem['tier']->id,
-                        'item_name' => $event->name . ' - ' . $lineItem['tier']->name,
-                        'quantity' => $lineItem['quantity'],
-                        'unit_price' => $lineItem['price'],
-                        'total_price' => $lineItem['price'] * $lineItem['quantity'],
-                    ]);
+                    $attendees = $lineItem['attendees'] ?? [];
+
+                    // If attendees are provided, create individual order items for each ticket
+                    if (!empty($attendees)) {
+                        for ($i = 0; $i < $lineItem['quantity']; $i++) {
+                            $attendee = $attendees[$i] ?? [];
+                            OrderItem::create([
+                                'order_id' => $order->id,
+                                'item_type' => 'ticket',
+                                'ticket_tier_id' => $lineItem['tier']->id,
+                                'item_name' => $event->name . ' - ' . $lineItem['tier']->name,
+                                'quantity' => 1,
+                                'unit_price' => $lineItem['price'],
+                                'total_price' => $lineItem['price'],
+                                'attendee_name' => $attendee['name'] ?? null,
+                                'attendee_note' => $attendee['note'] ?? null,
+                            ]);
+                        }
+                    } else {
+                        // No attendees - create single order item with quantity
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'item_type' => 'ticket',
+                            'ticket_tier_id' => $lineItem['tier']->id,
+                            'item_name' => $event->name . ' - ' . $lineItem['tier']->name,
+                            'quantity' => $lineItem['quantity'],
+                            'unit_price' => $lineItem['price'],
+                            'total_price' => $lineItem['price'] * $lineItem['quantity'],
+                        ]);
+                    }
                 } elseif ($lineItem['type'] === 'legacy_ticket') {
                     OrderItem::create([
                         'order_id' => $order->id,
@@ -196,10 +218,30 @@ class CheckoutController extends Controller
      */
     private function createSeatedCheckout(CreateCheckoutRequest $request, Event $event): JsonResponse
     {
-        $tableIds = $request->input('tables', []);
-        $seatIds = $request->input('seats', []);
+        $tablesData = $request->input('tables', []);
+        $seatsData = $request->input('seats', []);
         $reservationToken = $request->input('reservation_token');
         $extraItems = $request->input('extra_items', []);
+
+        // Extract IDs from objects for validation and querying
+        $tableIds = array_column($tablesData, 'id');
+        $seatIds = array_column($seatsData, 'id');
+
+        // Build lookup maps for attendee info
+        $tableAttendees = [];
+        foreach ($tablesData as $tableData) {
+            $tableAttendees[$tableData['id']] = [
+                'name' => $tableData['attendee_name'] ?? null,
+                'note' => $tableData['attendee_note'] ?? null,
+            ];
+        }
+        $seatAttendees = [];
+        foreach ($seatsData as $seatData) {
+            $seatAttendees[$seatData['id']] = [
+                'name' => $seatData['attendee_name'] ?? null,
+                'note' => $seatData['attendee_note'] ?? null,
+            ];
+        }
 
         // Validate reservation
         if (!$this->reservationService->validateReservation($reservationToken, $tableIds, $seatIds)) {
@@ -229,7 +271,7 @@ class CheckoutController extends Controller
         $total = $subtotal;
 
         // Create order
-        $order = DB::transaction(function () use ($event, $request, $tables, $seats, $extraItems, $subtotal, $total) {
+        $order = DB::transaction(function () use ($event, $request, $tables, $seats, $tableAttendees, $seatAttendees, $extraItems, $subtotal, $total) {
             $order = Order::create([
                 'event_id' => $event->id,
                 'customer_name' => $request->customer_name,
@@ -242,6 +284,7 @@ class CheckoutController extends Controller
 
             // Add table order items
             foreach ($tables as $table) {
+                $attendee = $tableAttendees[$table->id] ?? [];
                 OrderItem::create([
                     'order_id' => $order->id,
                     'item_type' => 'ticket',
@@ -250,12 +293,15 @@ class CheckoutController extends Controller
                     'quantity' => 1,
                     'unit_price' => $table->price,
                     'total_price' => $table->price,
+                    'attendee_name' => $attendee['name'] ?? null,
+                    'attendee_note' => $attendee['note'] ?? null,
                 ]);
             }
 
             // Add seat order items
             foreach ($seats as $seat) {
                 $table = $seat->table;
+                $attendee = $seatAttendees[$seat->id] ?? [];
                 OrderItem::create([
                     'order_id' => $order->id,
                     'item_type' => 'ticket',
@@ -264,6 +310,8 @@ class CheckoutController extends Controller
                     'quantity' => 1,
                     'unit_price' => $seat->price,
                     'total_price' => $seat->price,
+                    'attendee_name' => $attendee['name'] ?? null,
+                    'attendee_note' => $attendee['note'] ?? null,
                 ]);
             }
 

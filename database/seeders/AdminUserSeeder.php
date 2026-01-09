@@ -10,8 +10,8 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(
-            ['email' => 'admin@eventhub.com'],
+        User::updateOrCreate(
+            ['email' => 'admin@evenly.com'],
             [
                 'name' => 'Super Admin',
                 'password' => Hash::make('password'),
@@ -20,5 +20,7 @@ class AdminUserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        $this->command->info('Admin user created: admin@evenly.com / password');
     }
 }
