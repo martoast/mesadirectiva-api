@@ -329,7 +329,16 @@ class Event extends Model
 
     public function getImages(): array
     {
-        return $this->media['images'] ?? [];
+        $images = $this->media['images'] ?? [];
+        $disk = config('filesystems.media_disk', 'public');
+
+        // Always regenerate URLs from path to ensure correct domain
+        return array_map(function ($image) use ($disk) {
+            if (!empty($image['path'])) {
+                $image['url'] = \Illuminate\Support\Facades\Storage::disk($disk)->url($image['path']);
+            }
+            return $image;
+        }, $images);
     }
 
     public function getVideos(): array

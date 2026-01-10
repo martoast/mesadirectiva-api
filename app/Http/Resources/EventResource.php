@@ -31,8 +31,11 @@ class EventResource extends JsonResource
             'location_name' => $this->getLocationName(),
             'location_address' => $this->getLocationAddress(),
 
-            // Media Gallery
-            'media' => $this->media,
+            // Media Gallery (URLs regenerated from paths to ensure correct domain)
+            'media' => [
+                'images' => $this->getImages(),
+                'videos' => $this->getVideos(),
+            ],
 
             // Event Type
             'seating_type' => $this->seating_type ?? 'general_admission',
