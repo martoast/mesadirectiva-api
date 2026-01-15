@@ -29,6 +29,11 @@ class PublicEventController extends Controller
             });
         }
 
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where('name', 'like', "%{$search}%");
+        }
+
         $events = $query->paginate($request->get('per_page', 12));
 
         return response()->json([
