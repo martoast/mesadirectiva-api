@@ -19,6 +19,8 @@ class EventResource extends JsonResource
             'description' => $this->description,
             'image' => $this->image,
             'image_url' => $this->getImageUrl($this->image),
+            'image_focal_x' => $this->image_focal_x ?? 50,
+            'image_focal_y' => $this->image_focal_y ?? 50,
 
             // Date/Time
             'starts_at' => $this->starts_at,

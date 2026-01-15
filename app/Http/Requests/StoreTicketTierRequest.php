@@ -17,6 +17,7 @@ class StoreTicketTierRequest extends FormRequest
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
+            'currency' => 'sometimes|string|in:MXN,USD',
             'quantity' => 'nullable|integer|min:1',
 
             // Sales window

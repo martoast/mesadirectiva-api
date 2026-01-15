@@ -17,6 +17,7 @@ class UpdateTicketTierRequest extends FormRequest
             'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'sometimes|required|numeric|min:0',
+            'currency' => 'sometimes|string|in:MXN,USD',
             'quantity' => 'nullable|integer|min:1',
 
             // Sales window

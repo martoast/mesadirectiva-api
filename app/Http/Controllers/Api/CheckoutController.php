@@ -142,6 +142,7 @@ class CheckoutController extends Controller
                 'customer_name' => $request->customer_name,
                 'customer_email' => $request->customer_email,
                 'customer_phone' => $request->customer_phone,
+                'customer_company' => $request->customer_company,
                 'status' => 'pending',
                 'subtotal' => $subtotal,
                 'total' => $total,
@@ -277,6 +278,7 @@ class CheckoutController extends Controller
                 'customer_name' => $request->customer_name,
                 'customer_email' => $request->customer_email,
                 'customer_phone' => $request->customer_phone,
+                'customer_company' => $request->customer_company,
                 'status' => 'pending',
                 'subtotal' => $subtotal,
                 'total' => $total,
@@ -348,9 +350,10 @@ class CheckoutController extends Controller
         foreach ($lineItemsData as $lineItem) {
             if ($lineItem['type'] === 'tier') {
                 $tier = $lineItem['tier'];
+                $currency = strtolower($tier->currency ?? 'mxn');
                 $lineItems[] = [
                     'price_data' => [
-                        'currency' => 'mxn',
+                        'currency' => $currency,
                         'product_data' => [
                             'name' => $event->name . ' - ' . $tier->name,
                             'description' => $tier->description,

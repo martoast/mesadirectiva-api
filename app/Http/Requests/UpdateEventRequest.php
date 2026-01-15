@@ -20,6 +20,8 @@ class UpdateEventRequest extends FormRequest
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'image' => 'nullable|url|max:2000',
+            'image_focal_x' => 'sometimes|numeric|min:0|max:100',
+            'image_focal_y' => 'sometimes|numeric|min:0|max:100',
 
             // Date/Time
             'starts_at' => 'sometimes|date',

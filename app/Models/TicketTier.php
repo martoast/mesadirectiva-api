@@ -16,6 +16,7 @@ class TicketTier extends Model
         'name',
         'description',
         'price',
+        'currency',
         'quantity',
         'quantity_sold',
         // Sales window (Eventbrite-style)

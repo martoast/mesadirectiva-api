@@ -19,6 +19,8 @@ class Event extends Model
         'name',
         'description',
         'image',
+        'image_focal_x',
+        'image_focal_y',
         // Date/Time
         'starts_at',
         'ends_at',

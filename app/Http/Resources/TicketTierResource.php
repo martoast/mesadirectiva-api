@@ -14,6 +14,7 @@ class TicketTierResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'price' => (float) $this->price,
+            'currency' => $this->currency ?? 'MXN',
 
             // Inventory
             'quantity' => $this->quantity,

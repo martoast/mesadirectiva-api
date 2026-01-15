@@ -15,6 +15,7 @@ class OrderResource extends JsonResource
             'customer_name' => $this->customer_name,
             'customer_email' => $this->customer_email,
             'customer_phone' => $this->customer_phone,
+            'customer_company' => $this->customer_company,
             'status' => $this->status,
             'subtotal' => (float) $this->subtotal,
             'total' => (float) $this->total,
