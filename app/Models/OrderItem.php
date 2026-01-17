@@ -23,6 +23,8 @@ class OrderItem extends Model
         'total_price',
         'attendee_name',
         'attendee_note',
+        'checked_in_at',
+        'checked_in_by',
     ];
 
     protected function casts(): array
@@ -31,7 +33,31 @@ class OrderItem extends Model
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'checked_in_at' => 'datetime',
         ];
+    }
+
+    // Check-in helpers
+
+    public function isCheckedIn(): bool
+    {
+        return $this->checked_in_at !== null;
+    }
+
+    public function checkIn(int $userId): void
+    {
+        $this->update([
+            'checked_in_at' => now(),
+            'checked_in_by' => $userId,
+        ]);
+    }
+
+    public function undoCheckIn(): void
+    {
+        $this->update([
+            'checked_in_at' => null,
+            'checked_in_by' => null,
+        ]);
     }
 
     // Relationships
@@ -59,5 +85,10 @@ class OrderItem extends Model
     public function table(): BelongsTo
     {
         return $this->belongsTo(Table::class);
+    }
+
+    public function checkedInBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'checked_in_by');
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AttendeeController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\CheckoutController;
@@ -145,6 +146,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Event Orders
         Route::get('/{slug}/orders', [EventController::class, 'orders']);
+
+        // Attendees & Check-in
+        Route::get('/{slug}/attendees', [AttendeeController::class, 'index']);
+        Route::post('/{slug}/attendees/{orderItemId}/check-in', [AttendeeController::class, 'checkIn']);
+        Route::post('/{slug}/attendees/{orderItemId}/undo-check-in', [AttendeeController::class, 'undoCheckIn']);
     });
 
     // Users (Super Admin only)
