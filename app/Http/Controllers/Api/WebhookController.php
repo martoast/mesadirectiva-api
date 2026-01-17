@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Mail\OrderConfirmation;
+use App\Mail\OrderTickets;
 use App\Models\Event;
 use App\Models\EventItem;
 use App\Models\Order;
@@ -122,9 +122,20 @@ class WebhookController extends Controller
             }
         });
 
-        // HERE IS THE EMAIL TO THE USER
-
-        // Mail::to($order->customer_email)->send(new OrderConfirmation($order));
+        // Send tickets email to customer
+        try {
+            Mail::to($order->customer_email)->send(new OrderTickets($order));
+            Log::info('Tickets email sent', [
+                'order_id' => $order->id,
+                'email' => $order->customer_email,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send tickets email', [
+                'order_id' => $order->id,
+                'email' => $order->customer_email,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         Log::info('Order completed', [
             'order_id' => $order->id,

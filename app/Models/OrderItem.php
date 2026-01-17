@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class OrderItem extends Model
 {
@@ -25,6 +26,7 @@ class OrderItem extends Model
         'attendee_note',
         'checked_in_at',
         'checked_in_by',
+        'ticket_code',
     ];
 
     protected function casts(): array
@@ -58,6 +60,39 @@ class OrderItem extends Model
             'checked_in_at' => null,
             'checked_in_by' => null,
         ]);
+    }
+
+    // Ticket code helpers
+
+    /**
+     * Generate a unique ticket code for this order item
+     * Format: TKT-XXXX-XXXX (uppercase alphanumeric)
+     */
+    public function generateTicketCode(): string
+    {
+        do {
+            $code = 'TKT-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
+        } while (self::where('ticket_code', $code)->exists());
+
+        $this->update(['ticket_code' => $code]);
+
+        return $code;
+    }
+
+    /**
+     * Find an order item by its ticket code
+     */
+    public static function findByTicketCode(string $code): ?self
+    {
+        return self::where('ticket_code', $code)->first();
+    }
+
+    /**
+     * Check if this item has a ticket code
+     */
+    public function hasTicketCode(): bool
+    {
+        return $this->ticket_code !== null;
     }
 
     // Relationships

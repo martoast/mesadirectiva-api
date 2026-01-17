@@ -138,6 +138,72 @@ class AttendeeController extends Controller
     }
 
     /**
+     * Check in an attendee by scanning their ticket QR code
+     * POST /api/events/{slug}/attendees/scan
+     */
+    public function scanCheckIn(Request $request, string $slug): JsonResponse
+    {
+        $request->validate([
+            'ticket_code' => 'required|string|max:20',
+        ]);
+
+        $event = Event::where('slug', $slug)->firstOrFail();
+
+        // Authorization: user must be able to update the event
+        $this->authorize('update', $event);
+
+        // Find order item by ticket code
+        $orderItem = OrderItem::findByTicketCode($request->ticket_code);
+
+        if (!$orderItem) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid ticket code',
+            ], 404);
+        }
+
+        // Verify ticket belongs to this event
+        $orderItem->load(['order.event', 'ticketTier', 'table', 'seat', 'checkedInBy']);
+
+        if ($orderItem->order->event_id !== $event->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This ticket is for a different event',
+            ], 422);
+        }
+
+        // Verify order is completed
+        if ($orderItem->order->status !== 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This ticket has not been paid for',
+            ], 422);
+        }
+
+        // Check if already checked in
+        if ($orderItem->isCheckedIn()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Attendee is already checked in',
+                'attendee' => new AttendeeResource($orderItem),
+                'already_checked_in' => true,
+            ], 422);
+        }
+
+        // Check them in
+        $orderItem->checkIn($request->user()->id);
+
+        // Reload with relationships
+        $orderItem->load(['order', 'ticketTier', 'table', 'seat', 'checkedInBy']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Attendee checked in successfully',
+            'attendee' => new AttendeeResource($orderItem),
+        ]);
+    }
+
+    /**
      * Undo check-in for an attendee
      * POST /api/events/{slug}/attendees/{orderItemId}/undo-check-in
      */

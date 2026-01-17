@@ -23,6 +23,7 @@ class AttendeeResource extends JsonResource
             'quantity' => $this->quantity,
             'unit_price' => (float) $this->unit_price,
             'total_price' => (float) $this->total_price,
+            'ticket_code' => $this->ticket_code,
 
             // Check-in status
             'is_checked_in' => $this->isCheckedIn(),

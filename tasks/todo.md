@@ -1,462 +1,273 @@
-# Event Simplification Plan - Eventbrite Style
+# Current Task: E-Ticket Feature
 
 ## Overview
-
-Simplify the event creation process to match Eventbrite's streamlined approach. Remove over-engineered landing page builder fields and focus on essential event information.
-
----
-
-## Decisions Made
-
-| Question | Decision |
-|----------|----------|
-| Online events | YES - Support venue and online events |
-| Early bird approach | Use Eventbrite-style: separate ticket tiers with sales windows |
-| Gallery | KEEP - Support images (URL or upload) + YouTube video links |
-| Schedule/Highlights | REMOVE - Over-engineered |
-| Default timezone | America/Los_Angeles (PST) |
+Add electronic tickets that are emailed to customers after purchase. Each ticket is a PDF attachment with a QR code that admins can scan for quick check-in.
 
 ---
 
-## Question 3 Clarification: Organizer Info
-
-**The question:** When displaying "Organized by..." on the event page, where should this info come from?
-
-**Option A: Store on Event (Recommended)**
-```json
-{
-  "organizer_name": "Downtown School Foundation",
-  "organizer_description": "We've been organizing community events since 2010..."
-}
-```
-- Each event can have different organizer branding
-- Flexible for organizations with multiple sub-groups
-- User explicitly sets it per event
-
-**Option B: Use Creator's Profile**
-- Just show the `created_by` user's name/info
-- Simpler, but less flexible
-- Can't customize organizer branding per event
-
-**Option C: Separate Organizer Model (Complex)**
-- Create `organizers` table
-- Users can create organizer profiles
-- Events belong to an organizer
-- Most flexible but adds complexity
-
-**Recommendation:** Option A - simple fields on the event. Which do you prefer?
+## User Flow
+1. Customer purchases tickets via Stripe
+2. Stripe webhook confirms payment
+3. System generates unique ticket code for each OrderItem
+4. System generates PDF ticket for each OrderItem
+5. System sends single email to customer with all ticket PDFs attached
+6. At event, admin scans QR code on ticket
+7. System looks up ticket code, checks in attendee
 
 ---
 
-## Current vs Proposed Event Fields
+## API Tasks
 
-### KEEP (Core Event Details)
+### 1. Database: Add ticket_code to order_items
+- [ ] Create migration `add_ticket_code_to_order_items_table`
+  - `ticket_code` VARCHAR(20) UNIQUE NULLABLE
+- [ ] Update OrderItem model
+  - Add to `$fillable`
+  - Add method `generateTicketCode()` - format: `TKT-XXXX-XXXX` (alphanumeric, uppercase)
+  - Add static method `findByTicketCode($code)`
 
-| Field | Notes |
-|-------|-------|
-| `slug` | Auto-generated URL identifier |
-| `group_id` | Organization/group ownership |
-| `name` | Event title (required) |
-| `description` | Event description (HTML allowed) |
-| `status` | draft/live/closed |
-| `created_by` | Creator reference |
-| `timestamps` | Created/updated timestamps |
-| `softDeletes` | Soft delete support |
-| `seating_type` | general_admission/seated |
-| `reservation_minutes` | For seated events |
-| `faq_items` | Keep FAQs (JSON) |
-| `stripe_product_id` | Stripe integration |
-| `stripe_price_id` | Stripe integration |
+### 2. PDF Ticket Generation
+- [ ] Install DomPDF package: `composer require barryvdh/laravel-dompdf`
+- [ ] Create `app/Services/TicketService.php`
+  - `generateTicketPdf(OrderItem $orderItem): string` - returns PDF content
+  - `generateAllTicketsForOrder(Order $order): array` - returns array of [filename, content]
+- [ ] Create ticket PDF Blade template `resources/views/pdf/ticket.blade.php`
+  - Event name, date, time
+  - Venue/location info
+  - Attendee name
+  - Ticket type (tier name OR table/seat info)
+  - QR code (encoded ticket_code)
+  - Order number
+  - Simple, clean design (see design below)
 
-### MODIFY
+### 3. QR Code Generation
+- [ ] Install QR code package: `composer require simplesoftwareio/simple-qrcode`
+- [ ] Generate QR in ticket template encoding the ticket_code
+- [ ] QR should be large enough to scan easily (~150px)
 
-| Current | Proposed | Reason |
-|---------|----------|--------|
-| `date` + `time` | `starts_at` + `ends_at` | Full datetime with end time |
-| `location` (string) | `location_type` + `location` (JSON) | Support online events |
-| `hero_image` | `image` | Simpler naming |
-| `gallery_images` | `media` (JSON) | Support images + YouTube videos |
+### 4. Email with Ticket Attachments
+- [ ] Create Mailable `app/Mail/OrderTickets.php`
+  - Accepts Order with loaded items
+  - Attaches PDF for each ticket OrderItem
+  - Simple email body with event details
+- [ ] Create email Blade template `resources/views/emails/order-tickets.blade.php`
+  - Event name & date
+  - Order number
+  - List of attendee names
+  - Brief instructions ("Please have your ticket ready at the door")
 
-### REMOVE
+### 5. Trigger Email on Payment Success
+- [ ] Update `WebhookController::handleStripe()`
+  - After marking order as completed:
+    1. Generate ticket codes for each OrderItem (where item_type = 'ticket')
+    2. Send OrderTickets email (PDFs generated inside Mailable)
+- [ ] Consider queue job for async processing (optional)
+  - `app/Jobs/SendOrderTicketsJob.php`
+  - Dispatch after order completion
 
-| Field | Reason |
-|-------|--------|
-| `price` | Lives on ticket tiers |
-| `max_tickets` | Derived from ticket tiers |
-| `tickets_sold` | Calculated from ticket tiers |
-| `registration_open` | Use ticket sales dates |
-| `registration_deadline` | Use ticket sales end dates |
-| `hero_title` | Just use event `name` |
-| `hero_subtitle` | Use `description` excerpt |
-| `hero_cta_text` | Static "Get Tickets" |
-| `about` | Redundant with `description` |
-| `about_title` | Over-engineered |
-| `about_content` | Over-engineered |
-| `about_image` | Over-engineered |
-| `about_image_position` | Over-engineered |
-| `highlights` | Over-engineered |
-| `schedule` | Over-engineered |
-| `venue_name` | Merge into `location` JSON |
-| `venue_address` | Merge into `location` JSON |
-| `venue_map_url` | Merge into `location` JSON |
-| `contact_email` | Use organizer info |
-| `contact_phone` | Use organizer info |
+### 6. API Endpoint for QR Scan Check-in
+- [ ] Add route: `POST /events/{slug}/attendees/scan`
+- [ ] Add `AttendeeController::scanCheckIn(Request $request, string $slug)`
+  - Accepts `{ ticket_code: "TKT-XXXX-XXXX" }`
+  - Validates ticket belongs to this event
+  - Checks if already checked in (return error)
+  - Checks in the attendee
+  - Returns attendee info with success message
+- [ ] Add to useAttendees composable on frontend
 
-### ADD
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `starts_at` | datetime | Event start (required) |
-| `ends_at` | datetime | Event end (required) |
-| `timezone` | string | Default: America/Los_Angeles |
-| `location_type` | enum | "venue" or "online" |
-| `location` | JSON | Venue or online details |
-| `image` | string | Main event image |
-| `media` | JSON | Gallery images + YouTube videos |
-| `is_private` | boolean | Public or private listing |
-| `show_remaining` | boolean | Show remaining tickets |
-| `organizer_name` | string | Organizer display name |
-| `organizer_description` | text | About the organizer |
+### 7. Resend Tickets Endpoint (nice to have)
+- [ ] Add route: `POST /orders/{orderNumber}/resend-tickets`
+- [ ] Regenerates and resends ticket email
+- [ ] Useful if customer didn't receive email
 
 ---
 
-## Proposed New Event Schema
+## Frontend Tasks
 
-```php
-Schema::create('events', function (Blueprint $table) {
-    $table->id();
-    $table->string('slug')->unique();
-    $table->foreignId('group_id')->nullable()->constrained()->onDelete('set null');
+### 8. Update useAttendees Composable
+- [ ] Add `scanCheckIn(eventSlug, ticketCode)` method
+  - Calls `POST /events/{slug}/attendees/scan`
+  - Returns attendee data or error
 
-    // Core Info
-    $table->string('name');                              // Event title (required)
-    $table->text('description')->nullable();             // HTML description
-    $table->string('image')->nullable();                 // Main event image
+### 9. QR Scanner on Attendees Page
+- [ ] Install QR scanner: `yarn add html5-qrcode`
+- [ ] Add "Scan Ticket" button in attendees page header
+- [ ] Create scanner modal component
+  - Opens device camera
+  - Shows viewfinder overlay
+  - On QR detected: call `scanCheckIn()`
+  - Show success with attendee name
+  - Show error if invalid/already checked in
+  - "Scan Another" for continuous mode
+- [ ] Mobile-optimized (primary use case is phone at door)
 
-    // Date/Time
-    $table->dateTime('starts_at');                       // Event start (required)
-    $table->dateTime('ends_at');                         // Event end (required)
-    $table->string('timezone')->default('America/Los_Angeles');
-
-    // Location
-    $table->enum('location_type', ['venue', 'online'])->default('venue');
-    $table->json('location')->nullable();                // Venue or online details
-
-    // Media Gallery
-    $table->json('media')->nullable();                   // Images + YouTube videos
-
-    // Event Type
-    $table->enum('seating_type', ['general_admission', 'seated'])->default('general_admission');
-    $table->unsignedInteger('reservation_minutes')->default(15);
-
-    // Settings
-    $table->enum('status', ['draft', 'live', 'closed'])->default('draft');
-    $table->boolean('is_private')->default(false);       // Public or private
-    $table->boolean('show_remaining')->default(true);    // Show remaining tickets
-
-    // Organizer
-    $table->string('organizer_name')->nullable();
-    $table->text('organizer_description')->nullable();
-
-    // Optional Content
-    $table->json('faq_items')->nullable();               // [{question, answer}]
-
-    // Stripe
-    $table->string('stripe_product_id')->nullable();
-    $table->string('stripe_price_id')->nullable();
-
-    // Metadata
-    $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
-    $table->timestamps();
-    $table->softDeletes();
-
-    // Indexes
-    $table->index(['status', 'is_private']);
-    $table->index('group_id');
-    $table->index('starts_at');
-});
-```
+### 10. Scanner UX
+- [ ] Large viewfinder for easy scanning
+- [ ] Visual feedback: green flash on success, red on error
+- [ ] Show attendee name & ticket type after scan
+- [ ] Auto-refresh attendees list after check-in
+- [ ] Handle camera permission denied gracefully
 
 ---
 
-## Media Gallery Structure
+## PDF Ticket Design
 
-The `media` JSON field supports both images and YouTube videos:
-
-```json
-{
-  "images": [
-    {
-      "type": "upload",
-      "path": "events/gala-2025/gallery/img1.jpg",
-      "url": "https://s3.../events/gala-2025/gallery/img1.jpg"
-    },
-    {
-      "type": "url",
-      "url": "https://example.com/external-image.jpg"
-    }
-  ],
-  "videos": [
-    {
-      "type": "youtube",
-      "url": "https://www.youtube.com/watch?v=abc123",
-      "video_id": "abc123"
-    }
-  ]
-}
 ```
+┌─────────────────────────────────────────┐
+│                                         │
+│  ══════════════════════════════════════ │
+│                                         │
+│  EVENT NAME                             │
+│  Saturday, June 15, 2024 · 6:00 PM      │
+│                                         │
+│  Grand Ballroom, Hotel Marriott         │
+│  123 Main Street, Los Angeles, CA       │
+│                                         │
+│  ─────────────────────────────────────  │
+│                                         │
+│  ATTENDEE                               │
+│  John Doe                               │
+│                                         │
+│  TICKET TYPE                            │
+│  VIP Access                             │
+│  (or: Table 5 · Seat 3)                 │
+│                                         │
+│  ─────────────────────────────────────  │
+│                                         │
+│         ┌─────────────┐                 │
+│         │             │                 │
+│         │   QR CODE   │                 │
+│         │             │                 │
+│         └─────────────┘                 │
+│         TKT-A3X9-K2M4                   │
+│                                         │
+│  ─────────────────────────────────────  │
+│                                         │
+│  Order: ORD-240615-0042                 │
+│  Present this ticket at entry           │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+Keep it simple - black text on white, clean typography, no heavy branding.
 
 ---
 
-## Location JSON Examples
+## Email Content
 
-**Venue Event:**
-```json
-{
-  "name": "Grand Ballroom",
-  "address": "123 Main Street",
-  "city": "Los Angeles",
-  "state": "CA",
-  "country": "USA",
-  "postal_code": "90001",
-  "map_url": "https://maps.google.com/..."
-}
+**Subject:** Your tickets for [Event Name]
+
+**Body:**
+```
+Hi [Customer Name],
+
+Your tickets are attached to this email.
+
+EVENT DETAILS
+─────────────
+[Event Name]
+[Date] at [Time]
+[Venue Name]
+[Address]
+
+YOUR TICKETS
+────────────
+• John Doe - VIP Access
+• Jane Doe - VIP Access
+• Bob Smith - General Admission
+
+Order #: ORD-240615-0042
+
+Please have your ticket (printed or on your phone) ready at the door.
+
+See you there!
 ```
 
-**Online Event:**
-```json
-{
-  "platform": "Zoom",
-  "url": "https://zoom.us/j/123456",
-  "instructions": "Link will be sent 1 hour before event"
-}
-```
+**Attachments:**
+- `ticket-john-doe.pdf`
+- `ticket-jane-doe.pdf`
+- `ticket-bob-smith.pdf`
+
+Filename format: `ticket-{slugified-attendee-name}.pdf`
 
 ---
 
-## Enhanced Ticket Tiers Schema
+## Implementation Order
 
-Eventbrite-style ticket management with sales windows:
-
-```php
-Schema::create('ticket_tiers', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('event_id')->constrained()->onDelete('cascade');
-
-    // Core
-    $table->string('name');                              // Ticket name (required)
-    $table->text('description')->nullable();
-    $table->decimal('price', 10, 2);                     // 0 = free
-    $table->unsignedInteger('quantity')->nullable();     // null = unlimited
-    $table->unsignedInteger('quantity_sold')->default(0);
-
-    // Sales Window (Eventbrite-style early bird support)
-    $table->dateTime('sales_start')->nullable();         // When tickets go on sale
-    $table->dateTime('sales_end')->nullable();           // When ticket sales end
-
-    // Limits
-    $table->unsignedInteger('min_per_order')->default(1);
-    $table->unsignedInteger('max_per_order')->default(10);
-
-    // Display
-    $table->boolean('show_description')->default(false); // Show on event page
-    $table->boolean('is_hidden')->default(false);        // Hidden ticket type
-    $table->unsignedInteger('sort_order')->default(0);
-    $table->boolean('is_active')->default(true);
-
-    $table->timestamps();
-
-    $table->index(['event_id', 'is_active']);
-    $table->index(['event_id', 'sort_order']);
-});
-```
-
-### Early Bird Example (Eventbrite Style)
-
-Instead of `early_bird_price` on one tier, create two tiers:
-
-```json
-[
-  {
-    "name": "Early Bird",
-    "price": 80.00,
-    "quantity": 100,
-    "sales_start": "2025-01-01T00:00:00",
-    "sales_end": "2025-03-01T23:59:59",
-    "sort_order": 1
-  },
-  {
-    "name": "General Admission",
-    "price": 120.00,
-    "quantity": 400,
-    "sales_start": "2025-03-02T00:00:00",
-    "sales_end": "2025-06-14T18:00:00",
-    "sort_order": 2
-  }
-]
-```
-
-**Benefits:**
-- Clear visibility of what tickets are available when
-- Can have multiple early bird phases
-- More intuitive than hidden early_bird_price field
+1. **Database & Model** - ticket_code field
+2. **QR Package** - Install and test QR generation
+3. **PDF Package** - Install DomPDF
+4. **PDF Template** - Create ticket design
+5. **TicketService** - PDF generation logic
+6. **Mailable** - Email with attachments
+7. **Webhook Update** - Trigger on payment success
+8. **Scan Endpoint** - API for QR check-in
+9. **Frontend Scanner** - Camera integration
+10. **Testing** - End-to-end flow
 
 ---
 
-## API Changes
-
-### Create Event (Before: 26+ fields → After: ~12 fields)
-
-**After:**
-```json
-{
-  "group_id": 1,
-  "name": "Annual Gala 2025",
-  "description": "<p>Join us for an unforgettable evening...</p>",
-  "image": "https://...",
-  "starts_at": "2025-06-15T18:00:00",
-  "ends_at": "2025-06-15T23:00:00",
-  "timezone": "America/Los_Angeles",
-  "location_type": "venue",
-  "location": {
-    "name": "Grand Ballroom",
-    "address": "123 Main St",
-    "city": "Los Angeles",
-    "state": "CA"
-  },
-  "organizer_name": "School Foundation",
-  "organizer_description": "Organizing community events since 2010",
-  "is_private": false,
-  "show_remaining": true
-}
-```
-
-### Create Ticket Tier
-
-```json
-{
-  "name": "Early Bird",
-  "description": "Limited time pricing - save $40!",
-  "price": 80.00,
-  "quantity": 100,
-  "sales_start": "2025-01-01T00:00:00",
-  "sales_end": "2025-03-01T23:59:59",
-  "min_per_order": 1,
-  "max_per_order": 4,
-  "show_description": true
-}
-```
-
-### Add Media to Event
-
-**Upload image:**
-```
-POST /events/{slug}/media
-Content-Type: multipart/form-data
-{
-  "type": "image",
-  "file": <image file>
-}
-```
-
-**Add URL image:**
-```
-POST /events/{slug}/media
-{
-  "type": "image",
-  "url": "https://example.com/image.jpg"
-}
-```
-
-**Add YouTube video:**
-```
-POST /events/{slug}/media
-{
-  "type": "youtube",
-  "url": "https://www.youtube.com/watch?v=abc123"
-}
-```
+## Testing Checklist
+- [ ] Purchase creates ticket codes for all ticket items
+- [ ] PDF generates with correct event/attendee info
+- [ ] QR code encodes ticket_code correctly
+- [ ] QR code is scannable by phone camera
+- [ ] Email sends with all PDF attachments
+- [ ] Email displays correctly in Gmail/Outlook
+- [ ] Scanner opens camera on mobile
+- [ ] Scanner reads QR and checks in attendee
+- [ ] Scanner shows error for invalid code
+- [ ] Scanner shows error for already checked-in
+- [ ] Scanner shows error for wrong event
+- [ ] Works for both GA and Seated event tickets
 
 ---
 
-## Summary of Changes
+## Files to Create/Modify
 
-| Category | Removed | Added | Net Change |
-|----------|---------|-------|------------|
-| Event Fields | 18 | 10 | **-8 fields** |
-| Ticket Fields | 2 | 6 | +4 fields |
-| **Total** | **20** | **16** | **-4 fields** |
+### New Files
+- `database/migrations/xxxx_add_ticket_code_to_order_items_table.php`
+- `app/Services/TicketService.php`
+- `app/Mail/OrderTickets.php`
+- `app/Jobs/SendOrderTicketsJob.php` (optional)
+- `resources/views/pdf/ticket.blade.php`
+- `resources/views/emails/order-tickets.blade.php`
 
-**Key Simplifications:**
-- Event creation: 26+ fields → ~12 fields
-- Removed redundant hero/about sections
-- Unified media gallery (images + videos)
-- Eventbrite-style ticket sales windows
-- Support for online events
-- Clean location JSON structure
+### Modified Files
+- `app/Models/OrderItem.php` - Add ticket_code methods
+- `app/Http/Controllers/Api/AttendeeController.php` - Add scanCheckIn
+- `app/Http/Controllers/Api/WebhookController.php` - Trigger email
+- `routes/api.php` - Add scan route
+- `composer.json` - Add packages
 
----
-
-## Files to Update
-
-### Database Migrations
-- [ ] Create `simplify_events_table` migration
-- [ ] Create `update_ticket_tiers_table` migration
-
-### Models
-- [ ] `app/Models/Event.php` - Update fillable, casts, remove old methods
-- [ ] `app/Models/TicketTier.php` - Update fillable, casts, add new methods
-
-### Controllers
-- [ ] `app/Http/Controllers/Api/EventController.php` - Add media endpoints
-- [ ] `app/Http/Controllers/Api/TicketTierController.php` - Update for new fields
-
-### Requests
-- [ ] `app/Http/Requests/StoreEventRequest.php` - Simplify validation
-- [ ] `app/Http/Requests/UpdateEventRequest.php` - Simplify validation
-
-### Resources
-- [ ] `app/Http/Resources/EventResource.php` - Update output
-- [ ] `app/Http/Resources/TicketTierResource.php` - Update output
-
-### Seeders
-- [ ] `database/seeders/EventSeeder.php` - Update sample data
-
-### Documentation
-- [ ] `tasks/summary.md` - Update API docs
+### Frontend Files
+- `composables/useAttendees.js` - Add scanCheckIn method
+- `pages/app/admin/events/[slug]/attendees.vue` - Add scanner UI
+- `package.json` - Add html5-qrcode
 
 ---
 
-## Implementation Complete!
+## Future Enhancements (Not in scope)
+- Apple Wallet / Google Wallet passes
+- Ticket transfer to another email
+- Web page view of ticket (public URL)
+- Ticket void/cancel functionality
+- Bulk re-send tickets from admin
+- Custom ticket branding per event/group
 
-**Organizer Info:** Implemented Option A - `organizer_name` and `organizer_description` fields on each event.
+---
 
-### What was implemented:
+# Previously Completed
 
-1. **Database Migrations**
-   - `2025_12_25_233833_simplify_events_table.php` - Simplified events table
-   - `2025_12_25_233920_update_ticket_tiers_for_eventbrite_style.php` - Added sales windows
+## Event Simplification (Done)
+- Simplified event fields from 26+ to ~12
+- Added Eventbrite-style ticket tiers with sales windows
+- Added support for online events
+- Added media gallery (images + YouTube)
 
-2. **Models Updated**
-   - `Event.php` - New fields, media helpers, location helpers
-   - `TicketTier.php` - Sales window logic, availability checks
-
-3. **Controllers Updated**
-   - `EventController.php` - New media endpoints (`uploadImage`, `addMedia`, `removeMedia`)
-
-4. **Requests Updated**
-   - `StoreEventRequest.php` / `UpdateEventRequest.php` - Simplified validation
-   - `StoreTicketTierRequest.php` / `UpdateTicketTierRequest.php` - Sales window validation
-
-5. **Resources Updated**
-   - `EventResource.php` - New output format
-   - `TicketTierResource.php` - Sales status info
-
-6. **Seeder Updated**
-   - `EventSeeder.php` - 4 sample events (venue, seated, online, draft)
-
-7. **Routes Updated**
-   - Added `/events/{slug}/image` (upload main image)
-   - Added `/events/{slug}/media` (add gallery media)
-   - Added `DELETE /events/{slug}/media` (remove gallery media)
-   - Removed `/events/{slug}/toggle-registration` (no longer needed)
+## Attendees Check-In System (Done)
+- Added check-in fields to order_items (checked_in_at, checked_in_by)
+- Created AttendeeController with list/checkIn/undoCheckIn
+- Created AttendeeResource
+- Created frontend attendees page with search/filters
+- Added link from event detail page

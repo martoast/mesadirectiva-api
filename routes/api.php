@@ -149,6 +149,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Attendees & Check-in
         Route::get('/{slug}/attendees', [AttendeeController::class, 'index']);
+        Route::post('/{slug}/attendees/scan', [AttendeeController::class, 'scanCheckIn']);
         Route::post('/{slug}/attendees/{orderItemId}/check-in', [AttendeeController::class, 'checkIn']);
         Route::post('/{slug}/attendees/{orderItemId}/undo-check-in', [AttendeeController::class, 'undoCheckIn']);
     });
