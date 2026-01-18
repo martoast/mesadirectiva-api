@@ -310,7 +310,7 @@ class Event extends Model
             return $this->getTotalSeatsAvailable();
         }
 
-        return $this->activeTicketTiers->sum(fn ($tier) => $tier->getAvailableQuantity() ?? PHP_INT_MAX);
+        return (int) $this->activeTicketTiers->sum(fn ($tier) => $tier->getAvailableQuantity() ?? PHP_INT_MAX);
     }
 
     public function getTotalTicketsSold(): int
@@ -319,7 +319,7 @@ class Event extends Model
             return $this->getTotalSeatsSold();
         }
 
-        return $this->activeTicketTiers->sum('quantity_sold');
+        return (int) $this->activeTicketTiers->sum('quantity_sold');
     }
 
     public function getRevenue(): float
