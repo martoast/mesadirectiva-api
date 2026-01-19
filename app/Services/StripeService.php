@@ -55,7 +55,7 @@ class StripeService
         $price = Price::create([
             'product' => $eventProductId,
             'unit_amount' => (int) ($item->price * 100),
-            'currency' => 'usd',
+            'currency' => 'mxn',
             'nickname' => $item->name,
             'metadata' => [
                 'item_id' => $item->id,
