@@ -23,7 +23,8 @@ class AttendeeController extends Controller
         $this->authorize('view', $event);
 
         $query = OrderItem::whereHas('order', function ($q) use ($event) {
-            $q->where('event_id', $event->id);
+            $q->where('event_id', $event->id)
+              ->where('status', 'completed'); // Only show attendees from paid orders
         })
         ->where('item_type', 'ticket')
         ->with(['order', 'ticketTier', 'table', 'seat', 'checkedInBy']);
@@ -114,7 +115,8 @@ class AttendeeController extends Controller
         $this->authorize('update', $event);
 
         $orderItem = OrderItem::whereHas('order', function ($q) use ($event) {
-            $q->where('event_id', $event->id);
+            $q->where('event_id', $event->id)
+              ->where('status', 'completed'); // Only allow check-in for paid orders
         })
         ->where('id', $orderItemId)
         ->where('item_type', 'ticket')
@@ -215,7 +217,8 @@ class AttendeeController extends Controller
         $this->authorize('update', $event);
 
         $orderItem = OrderItem::whereHas('order', function ($q) use ($event) {
-            $q->where('event_id', $event->id);
+            $q->where('event_id', $event->id)
+              ->where('status', 'completed'); // Only allow for paid orders
         })
         ->where('id', $orderItemId)
         ->where('item_type', 'ticket')
