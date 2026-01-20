@@ -31,19 +31,31 @@ class WebhookController extends Controller
      */
     public function handleStripe(Request $request): Response
     {
+        Log::info('Stripe webhook endpoint hit', [
+            'ip' => $request->ip(),
+            'content_length' => strlen($request->getContent()),
+        ]);
+
         $payload = $request->getContent();
         $signature = $request->header('Stripe-Signature');
+
+        if (!$signature) {
+            Log::error('Stripe webhook missing signature header');
+            return response('Missing signature', 400);
+        }
 
         try {
             $event = $this->stripeService->constructWebhookEvent($payload, $signature);
         } catch (\Exception $e) {
             Log::error('Stripe webhook signature verification failed', [
                 'error' => $e->getMessage(),
+                'signature_present' => !empty($signature),
+                'payload_length' => strlen($payload),
             ]);
             return response('Invalid signature', 400);
         }
 
-        Log::info('Stripe webhook received', [
+        Log::info('Stripe webhook received and verified', [
             'type' => $event->type,
             'id' => $event->id,
         ]);
@@ -60,14 +72,23 @@ class WebhookController extends Controller
 
     private function handleCheckoutCompleted(object $session): void
     {
+        Log::info('Processing checkout.session.completed', [
+            'session_id' => $session->id,
+            'payment_status' => $session->payment_status ?? 'unknown',
+            'metadata' => json_encode($session->metadata ?? []),
+        ]);
+
         $orderId = $session->metadata->order_id ?? null;
 
         if (!$orderId) {
             Log::warning('Checkout completed but no order_id in metadata', [
                 'session_id' => $session->id,
+                'all_metadata' => json_encode($session->metadata ?? []),
             ]);
             return;
         }
+
+        Log::info('Looking up order', ['order_id' => $orderId]);
 
         $order = Order::with('event')->find($orderId);
 
@@ -77,6 +98,14 @@ class WebhookController extends Controller
             ]);
             return;
         }
+
+        Log::info('Order found', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'current_status' => $order->status,
+            'customer_email' => $order->customer_email,
+            'event_name' => $order->event->name ?? 'unknown',
+        ]);
 
         DB::transaction(function () use ($order, $session) {
             $order->markAsCompleted($session->payment_intent);

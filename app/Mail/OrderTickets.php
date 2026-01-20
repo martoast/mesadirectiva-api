@@ -10,6 +10,7 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class OrderTickets extends Mailable
 {
@@ -50,15 +51,35 @@ class OrderTickets extends Mailable
      */
     public function attachments(): array
     {
-        $ticketService = app(TicketService::class);
-        $tickets = $ticketService->generateAllTicketsForOrder($this->order);
+        Log::info('Generating ticket attachments', [
+            'order_id' => $this->order->id,
+            'order_number' => $this->order->order_number,
+        ]);
 
-        $attachments = [];
-        foreach ($tickets as $filename => $pdfContent) {
-            $attachments[] = Attachment::fromData(fn() => $pdfContent, $filename)
-                ->withMime('application/pdf');
+        try {
+            $ticketService = app(TicketService::class);
+            $tickets = $ticketService->generateAllTicketsForOrder($this->order);
+
+            Log::info('Tickets generated', [
+                'order_id' => $this->order->id,
+                'ticket_count' => count($tickets),
+                'filenames' => array_keys($tickets),
+            ]);
+
+            $attachments = [];
+            foreach ($tickets as $filename => $pdfContent) {
+                $attachments[] = Attachment::fromData(fn() => $pdfContent, $filename)
+                    ->withMime('application/pdf');
+            }
+
+            return $attachments;
+        } catch (\Exception $e) {
+            Log::error('Failed to generate ticket attachments', [
+                'order_id' => $this->order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
-
-        return $attachments;
     }
 }
