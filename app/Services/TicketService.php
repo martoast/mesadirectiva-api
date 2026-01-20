@@ -91,14 +91,16 @@ class TicketService
      */
     private function generateQrCode(string $data): string
     {
-        $result = Builder::create()
-            ->writer(new PngWriter())
-            ->data($data)
-            ->encoding(new Encoding('UTF-8'))
-            ->errorCorrectionLevel(ErrorCorrectionLevel::High)
-            ->size(200)
-            ->margin(10)
-            ->build();
+        $builder = new Builder(
+            writer: new PngWriter(),
+            data: $data,
+            encoding: new Encoding('UTF-8'),
+            errorCorrectionLevel: ErrorCorrectionLevel::High,
+            size: 200,
+            margin: 10,
+        );
+
+        $result = $builder->build();
 
         return $result->getDataUri();
     }
