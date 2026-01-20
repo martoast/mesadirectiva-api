@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Tickets</title>
+    <title>Tus Boletos</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -126,19 +126,19 @@
 <body>
     <div class="container">
         <div class="greeting">
-            Hi {{ $order->customer_name }},
+            Hola {{ $order->customer_name }},
         </div>
 
         <div class="intro">
-            Your tickets are attached to this email.
+            Tus boletos están adjuntos a este correo.
         </div>
 
-        <div class="section-title">Event Details</div>
+        <div class="section-title">Detalles del Evento</div>
         <div class="event-details">
             <div class="event-name">{{ $event->name }}</div>
             <div class="event-info">
-                {{ \Carbon\Carbon::parse($event->starts_at)->setTimezone($event->timezone ?? 'America/Mexico_City')->format('l, F j, Y') }}
-                at
+                {{ \Carbon\Carbon::parse($event->starts_at)->setTimezone($event->timezone ?? 'America/Mexico_City')->locale('es')->isoFormat('dddd, D [de] MMMM [de] YYYY') }}
+                a las
                 {{ \Carbon\Carbon::parse($event->starts_at)->setTimezone($event->timezone ?? 'America/Mexico_City')->format('g:i A') }}
             </div>
             @if($event->location_type === 'venue' && $event->location)
@@ -149,11 +149,11 @@
                     @endif
                 </div>
             @elseif($event->location_type === 'online')
-                <div class="event-info">Online Event</div>
+                <div class="event-info">Evento en línea</div>
             @endif
         </div>
 
-        <div class="section-title">Your Tickets ({{ $ticketItems->count() }})</div>
+        <div class="section-title">Tus Boletos ({{ $ticketItems->count() }})</div>
         <div class="tickets-list">
             @foreach($ticketItems as $item)
                 <div class="ticket-item">
@@ -165,11 +165,11 @@
                             @if($item->ticketTier)
                                 {{ $item->ticketTier->name }}
                             @elseif($item->table && $item->seat)
-                                {{ $item->table->name }} · Seat {{ $item->seat->label }}
+                                {{ $item->table->name }} · Asiento {{ $item->seat->label }}
                             @elseif($item->table)
                                 {{ $item->table->name }}
                             @else
-                                {{ $item->item_name ?: 'General Admission' }}
+                                {{ $item->item_name ?: 'Entrada General' }}
                             @endif
                         </span>
                     </div>
@@ -178,15 +178,15 @@
         </div>
 
         <div class="order-number">
-            Order #: {{ $order->order_number }}
+            Orden #: {{ $order->order_number }}
         </div>
 
         <div class="instructions">
-            Please have your ticket (printed or on your phone) ready at the door.
+            Por favor ten tu boleto (impreso o en tu teléfono) listo en la entrada.
         </div>
 
         <div class="footer">
-            See you there!
+            ¡Te esperamos!
         </div>
     </div>
 </body>
