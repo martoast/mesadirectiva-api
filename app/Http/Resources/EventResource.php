@@ -59,6 +59,7 @@ class EventResource extends JsonResource
             'can_purchase' => $this->canPurchase(),
             'purchase_blocked_reason' => $this->getPurchaseBlockedReason(),
             'total_tickets_sold' => $this->getTotalTicketsSold(),
+            'total_revenue' => $this->getRevenue(),
             'total_tickets_available' => $this->when(
                 $this->show_remaining,
                 fn() => $this->getTotalTicketsAvailable()
