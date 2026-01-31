@@ -63,11 +63,11 @@ class UpdateEventRequest extends FormRequest
             // Email & Ticket customization
             'email_settings' => 'nullable|array',
             'email_settings.email_subject' => 'nullable|string|max:255',
-            'email_settings.email_greeting' => 'nullable|string|max:255',
-            'email_settings.email_intro' => 'nullable|string|max:500',
-            'email_settings.email_instructions' => 'nullable|string|max:500',
-            'email_settings.email_footer' => 'nullable|string|max:255',
-            'email_settings.ticket_footer' => 'nullable|string|max:255',
+            'email_settings.email_greeting' => 'nullable|string|max:5000',
+            'email_settings.email_intro' => 'nullable|string|max:5000',
+            'email_settings.email_instructions' => 'nullable|string|max:5000',
+            'email_settings.email_footer' => 'nullable|string|max:5000',
+            'email_settings.ticket_footer' => 'nullable|string|max:5000',
         ];
     }
 }
