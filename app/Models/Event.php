@@ -42,6 +42,8 @@ class Event extends Model
         'organizer_description',
         // Content
         'faq_items',
+        // Email & Ticket customization
+        'email_settings',
         // Stripe
         'stripe_product_id',
         'stripe_price_id',
@@ -56,6 +58,7 @@ class Event extends Model
             'location' => 'array',
             'media' => 'array',
             'faq_items' => 'array',
+            'email_settings' => 'array',
             'reservation_minutes' => 'integer',
             'is_private' => 'boolean',
             'show_remaining' => 'boolean',
@@ -159,6 +162,32 @@ class Event extends Model
     public function activeTables(): HasMany
     {
         return $this->hasMany(Table::class)->where('is_active', true);
+    }
+
+    // Email & Ticket Customization
+
+    /**
+     * Get an email setting value with placeholder replacement.
+     */
+    public function getEmailSetting(string $key, ?string $default = null, array $replacements = []): ?string
+    {
+        $value = $this->email_settings[$key] ?? null;
+
+        // Use default if empty
+        if (empty($value)) {
+            $value = $default;
+        }
+
+        if ($value === null) {
+            return null;
+        }
+
+        // Replace placeholders
+        $placeholders = array_merge([
+            '{event_name}' => $this->name,
+        ], $replacements);
+
+        return str_replace(array_keys($placeholders), array_values($placeholders), $value);
     }
 
     // Business Logic

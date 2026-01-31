@@ -55,6 +55,9 @@ class EventResource extends JsonResource
             // Content
             'faq_items' => $this->faq_items,
 
+            // Email & Ticket customization
+            'email_settings' => $this->email_settings,
+
             // Computed Fields
             'can_purchase' => $this->canPurchase(),
             'purchase_blocked_reason' => $this->getPurchaseBlockedReason(),

@@ -126,11 +126,11 @@
 <body>
     <div class="container">
         <div class="greeting">
-            Hola {{ $order->customer_name }},
+            {{ $emailGreeting }}
         </div>
 
         <div class="intro">
-            Tus boletos están adjuntos a este correo.
+            {{ $emailIntro }}
         </div>
 
         <div class="section-title">Detalles del Evento</div>
@@ -182,11 +182,11 @@
         </div>
 
         <div class="instructions">
-            Por favor ten tu boleto (impreso o en tu teléfono) listo en la entrada.
+            {{ $emailInstructions }}
         </div>
 
         <div class="footer">
-            ¡Te esperamos!
+            {{ $emailFooter }}
         </div>
     </div>
 </body>

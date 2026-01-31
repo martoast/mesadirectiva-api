@@ -30,12 +30,17 @@ class TicketService
         // Generate QR code as base64 image
         $qrCode = $this->generateQrCode($orderItem->ticket_code);
 
+        // Get custom ticket footer from event settings
+        $event = $orderItem->order->event;
+        $ticketFooter = $event->getEmailSetting('ticket_footer', 'Presenta este boleto en la entrada');
+
         // Generate PDF
         $pdf = Pdf::loadView('pdf.ticket', [
             'orderItem' => $orderItem,
             'order' => $orderItem->order,
-            'event' => $orderItem->order->event,
+            'event' => $event,
             'qrCode' => $qrCode,
+            'ticketFooter' => $ticketFooter,
         ]);
 
         // Set paper size to a nice ticket size (4x6 inches)

@@ -59,6 +59,15 @@ class UpdateEventRequest extends FormRequest
             'faq_items' => 'nullable|array|max:20',
             'faq_items.*.question' => 'required_with:faq_items|string|max:255',
             'faq_items.*.answer' => 'required_with:faq_items|string|max:2000',
+
+            // Email & Ticket customization
+            'email_settings' => 'nullable|array',
+            'email_settings.email_subject' => 'nullable|string|max:255',
+            'email_settings.email_greeting' => 'nullable|string|max:255',
+            'email_settings.email_intro' => 'nullable|string|max:500',
+            'email_settings.email_instructions' => 'nullable|string|max:500',
+            'email_settings.email_footer' => 'nullable|string|max:255',
+            'email_settings.ticket_footer' => 'nullable|string|max:255',
         ];
     }
 }

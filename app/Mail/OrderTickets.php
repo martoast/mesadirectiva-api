@@ -27,19 +27,51 @@ class OrderTickets extends Mailable
 
     public function envelope(): Envelope
     {
+        $event = $this->order->event;
+        $replacements = ['{customer_name}' => $this->order->customer_name];
+
+        $subject = $event->getEmailSetting(
+            'email_subject',
+            "Tus boletos para {event_name}",
+            $replacements
+        );
+
         return new Envelope(
-            subject: "Tus boletos para {$this->order->event->name}",
+            subject: $subject,
         );
     }
 
     public function content(): Content
     {
+        $event = $this->order->event;
+        $replacements = ['{customer_name}' => $this->order->customer_name];
+
         return new Content(
             view: 'emails.order-tickets',
             with: [
                 'order' => $this->order,
-                'event' => $this->order->event,
+                'event' => $event,
                 'ticketItems' => $this->order->items->where('item_type', 'ticket'),
+                'emailGreeting' => $event->getEmailSetting(
+                    'email_greeting',
+                    'Hola {customer_name},',
+                    $replacements
+                ),
+                'emailIntro' => $event->getEmailSetting(
+                    'email_intro',
+                    'Tus boletos están adjuntos a este correo.',
+                    $replacements
+                ),
+                'emailInstructions' => $event->getEmailSetting(
+                    'email_instructions',
+                    'Por favor ten tu boleto (impreso o en tu teléfono) listo en la entrada.',
+                    $replacements
+                ),
+                'emailFooter' => $event->getEmailSetting(
+                    'email_footer',
+                    '¡Te esperamos!',
+                    $replacements
+                ),
             ],
         );
     }

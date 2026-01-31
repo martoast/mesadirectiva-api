@@ -178,7 +178,7 @@
         <!-- Footer -->
         <div class="footer">
             <div class="order-number">Order: {{ $order->order_number }}</div>
-            <div class="instructions">Present this ticket at entry</div>
+            <div class="instructions">{{ $ticketFooter ?? 'Presenta este boleto en la entrada' }}</div>
         </div>
     </div>
 </body>
