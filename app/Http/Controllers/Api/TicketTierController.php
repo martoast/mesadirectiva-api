@@ -110,4 +110,38 @@ class TicketTierController extends Controller
             'message' => 'Ticket tier deleted successfully',
         ]);
     }
+
+    public function reorder(Request $request, string $slug): JsonResponse
+    {
+        $event = Event::where('slug', $slug)->firstOrFail();
+
+        $this->authorize('update', $event);
+
+        $request->validate([
+            'tier_ids' => 'required|array',
+            'tier_ids.*' => 'integer|exists:ticket_tiers,id',
+        ]);
+
+        $tierIds = $request->input('tier_ids');
+
+        // Verify all tiers belong to this event
+        $eventTierIds = $event->ticketTiers()->pluck('id')->toArray();
+        foreach ($tierIds as $tierId) {
+            if (!in_array($tierId, $eventTierIds)) {
+                return response()->json([
+                    'message' => 'One or more tier IDs do not belong to this event',
+                ], 400);
+            }
+        }
+
+        // Update sort_order for each tier
+        foreach ($tierIds as $index => $tierId) {
+            TicketTier::where('id', $tierId)->update(['sort_order' => $index]);
+        }
+
+        return response()->json([
+            'message' => 'Ticket tiers reordered successfully',
+            'tiers' => TicketTierResource::collection($event->ticketTiers()->ordered()->get()),
+        ]);
+    }
 }

@@ -125,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Ticket Tiers (for General Admission events)
         Route::get('/{slug}/ticket-tiers', [TicketTierController::class, 'index']);
         Route::post('/{slug}/ticket-tiers', [TicketTierController::class, 'store']);
+        Route::post('/{slug}/ticket-tiers/reorder', [TicketTierController::class, 'reorder']);
         Route::get('/{slug}/ticket-tiers/{tierId}', [TicketTierController::class, 'show']);
         Route::put('/{slug}/ticket-tiers/{tierId}', [TicketTierController::class, 'update']);
         Route::delete('/{slug}/ticket-tiers/{tierId}', [TicketTierController::class, 'destroy']);
