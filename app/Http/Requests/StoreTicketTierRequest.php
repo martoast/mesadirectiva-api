@@ -30,6 +30,7 @@ class StoreTicketTierRequest extends FormRequest
 
             // Display options
             'show_description' => 'boolean',
+            'hide_available_quantity' => 'boolean',
             'is_hidden' => 'boolean',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',

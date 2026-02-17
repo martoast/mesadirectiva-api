@@ -33,6 +33,7 @@ class TicketTierResource extends JsonResource
 
             // Display options
             'show_description' => $this->show_description,
+            'hide_available_quantity' => $this->hide_available_quantity,
             'is_hidden' => $this->is_hidden,
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,

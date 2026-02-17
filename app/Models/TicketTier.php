@@ -27,6 +27,7 @@ class TicketTier extends Model
         'max_per_order',
         // Display options
         'show_description',
+        'hide_available_quantity',
         'is_hidden',
         'sort_order',
         'is_active',
@@ -43,6 +44,7 @@ class TicketTier extends Model
             'min_per_order' => 'integer',
             'max_per_order' => 'integer',
             'show_description' => 'boolean',
+            'hide_available_quantity' => 'boolean',
             'is_hidden' => 'boolean',
             'sort_order' => 'integer',
             'is_active' => 'boolean',
