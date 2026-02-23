@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -92,15 +94,51 @@ class ReportService
     }
 
     /**
-     * Get sales report data
+     * Get sales report data (all records — used by exports)
      */
     public function getSalesReport(User $user, array $filters = []): Collection
+    {
+        return $this->buildSalesQuery($user, $filters)
+            ->orderBy('paid_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get paginated sales report data
+     */
+    public function getSalesReportPaginated(User $user, array $filters = [], int $perPage = 25): LengthAwarePaginator
+    {
+        return $this->buildSalesQuery($user, $filters)
+            ->orderBy('paid_at', 'desc')
+            ->paginate($perPage);
+    }
+
+    /**
+     * Get summary totals for the full filtered set (not just the current page)
+     */
+    public function getSalesSummary(User $user, array $filters = []): array
+    {
+        $query = $this->buildSalesQuery($user, $filters, false);
+
+        return [
+            'total_orders' => (clone $query)->count(),
+            'total_revenue' => round((clone $query)->sum('total'), 2),
+        ];
+    }
+
+    /**
+     * Build the base query for sales/orders reports
+     */
+    private function buildSalesQuery(User $user, array $filters = [], bool $withRelations = true): Builder
     {
         $eventIds = Event::accessibleBy($user)->pluck('id');
 
         $query = Order::whereIn('event_id', $eventIds)
-            ->where('status', 'completed')
-            ->with('event:id,name,slug,group_id', 'event.group:id,name', 'items');
+            ->where('status', 'completed');
+
+        if ($withRelations) {
+            $query->with('event:id,name,slug,group_id', 'event.group:id,name', 'items');
+        }
 
         if (!empty($filters['event_id'])) {
             $query->where('event_id', $filters['event_id']);
@@ -133,6 +171,6 @@ class ReportService
             $query->where('status', $filters['status']);
         }
 
-        return $query->orderBy('paid_at', 'desc')->get();
+        return $query;
     }
 }

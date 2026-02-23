@@ -32,13 +32,18 @@ class ReportController extends Controller
             'search',
         ]);
 
-        $orders = $this->reportService->getSalesReport($request->user(), $filters);
+        $perPage = (int) $request->input('per_page', 25);
+        $paginator = $this->reportService->getSalesReportPaginated($request->user(), $filters, $perPage);
+        $summary = $this->reportService->getSalesSummary($request->user(), $filters);
 
         return response()->json([
-            'orders' => OrderResource::collection($orders),
-            'summary' => [
-                'total_orders' => $orders->count(),
-                'total_revenue' => $orders->sum('total'),
+            'orders' => OrderResource::collection($paginator),
+            'summary' => $summary,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
             ],
         ]);
     }
@@ -80,10 +85,17 @@ class ReportController extends Controller
             'search',
         ]);
 
-        $orders = $this->reportService->getSalesReport($request->user(), $filters);
+        $perPage = (int) $request->input('per_page', 25);
+        $paginator = $this->reportService->getSalesReportPaginated($request->user(), $filters, $perPage);
 
         return response()->json([
-            'orders' => OrderResource::collection($orders),
+            'orders' => OrderResource::collection($paginator),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
         ]);
     }
 
