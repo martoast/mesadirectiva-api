@@ -34,11 +34,16 @@ class SalesExport implements FromCollection, WithHeadings, WithMapping, WithStyl
             'Tickets',
             'Total',
             'Status',
+            'Attendee Name(s)',
+            'Attendee Note(s)',
         ];
     }
 
     public function map($order): array
     {
+        $attendeeNames = $order->items->pluck('attendee_name')->filter()->join(', ');
+        $attendeeNotes = $order->items->pluck('attendee_note')->filter()->join(', ');
+
         return [
             $order->order_number,
             $order->paid_at?->format('Y-m-d H:i'),
@@ -49,6 +54,8 @@ class SalesExport implements FromCollection, WithHeadings, WithMapping, WithStyl
             $order->getTicketCount(),
             '$' . number_format($order->total, 2),
             ucfirst($order->status),
+            $attendeeNames ?: 'N/A',
+            $attendeeNotes ?: 'N/A',
         ];
     }
 

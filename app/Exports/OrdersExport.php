@@ -33,6 +33,8 @@ class OrdersExport implements FromCollection, WithHeadings, WithMapping, WithSty
             'Customer Email',
             'Customer Phone',
             'Items',
+            'Attendee Name(s)',
+            'Attendee Note(s)',
             'Subtotal',
             'Total',
             'Status',
@@ -46,6 +48,9 @@ class OrdersExport implements FromCollection, WithHeadings, WithMapping, WithSty
             "{$item->item_name} x{$item->quantity}"
         )->join(', ');
 
+        $attendeeNames = $order->items->pluck('attendee_name')->filter()->join(', ');
+        $attendeeNotes = $order->items->pluck('attendee_note')->filter()->join(', ');
+
         return [
             $order->order_number,
             $order->paid_at?->format('Y-m-d H:i'),
@@ -55,6 +60,8 @@ class OrdersExport implements FromCollection, WithHeadings, WithMapping, WithSty
             $order->customer_email,
             $order->customer_phone ?? 'N/A',
             $items,
+            $attendeeNames ?: 'N/A',
+            $attendeeNotes ?: 'N/A',
             '$' . number_format($order->subtotal, 2),
             '$' . number_format($order->total, 2),
             ucfirst($order->status),
