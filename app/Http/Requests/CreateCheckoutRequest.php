@@ -19,7 +19,7 @@ class CreateCheckoutRequest extends FormRequest
             'customer_name' => 'required|string|max:255',
             'customer_email' => 'required|email|max:255',
             'customer_phone' => 'nullable|string|max:20',
-            'customer_company' => 'nullable|string|max:255',
+            'customer_company' => 'required|string|max:255',
             'extra_items' => 'nullable|array',
             'extra_items.*.item_id' => 'required|integer|exists:event_items,id',
             'extra_items.*.quantity' => 'required|integer|min:1|max:10',
