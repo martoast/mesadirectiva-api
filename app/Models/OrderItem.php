@@ -24,6 +24,7 @@ class OrderItem extends Model
         'total_price',
         'attendee_name',
         'attendee_note',
+        'student_key',
         'checked_in_at',
         'checked_in_by',
         'ticket_code',
@@ -37,6 +38,17 @@ class OrderItem extends Model
             'total_price' => 'decimal:2',
             'checked_in_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Normalize a clave del alumno so lookups (e.g. dependent tier payments)
+     * match regardless of casing/whitespace.
+     */
+    public static function normalizeStudentKey(?string $key): ?string
+    {
+        $key = trim((string) $key);
+
+        return $key === '' ? null : mb_strtoupper($key);
     }
 
     // Check-in helpers

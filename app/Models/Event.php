@@ -44,9 +44,12 @@ class Event extends Model
         'faq_items',
         // Email & Ticket customization
         'email_settings',
+        // Checkout field configuration
+        'checkout_settings',
         // Stripe
         'stripe_product_id',
         'stripe_price_id',
+        'stripe_account',
         'created_by',
     ];
 
@@ -59,6 +62,7 @@ class Event extends Model
             'media' => 'array',
             'faq_items' => 'array',
             'email_settings' => 'array',
+            'checkout_settings' => 'array',
             'reservation_minutes' => 'integer',
             'is_private' => 'boolean',
             'show_remaining' => 'boolean',
@@ -188,6 +192,40 @@ class Event extends Model
         ], $replacements);
 
         return str_replace(array_keys($placeholders), array_values($placeholders), $value);
+    }
+
+    // Checkout field configuration
+
+    public function getCheckoutSetting(string $key, mixed $default = null): mixed
+    {
+        return $this->checkout_settings[$key] ?? $default;
+    }
+
+    /**
+     * Whether checkout shows the student section (name/clave/nota) at all.
+     * Defaults to true so existing events keep their current behavior.
+     */
+    public function collectsStudentFields(): bool
+    {
+        return (bool) $this->getCheckoutSetting('collect_student_fields', true);
+    }
+
+    /**
+     * Whether student name + clave are mandatory per ticket.
+     */
+    public function requiresStudentFields(): bool
+    {
+        return $this->collectsStudentFields()
+            && (bool) $this->getCheckoutSetting('require_student_fields', false);
+    }
+
+    /**
+     * Whether the note (salón/generación) is mandatory per ticket.
+     */
+    public function requiresAttendeeNote(): bool
+    {
+        return $this->collectsStudentFields()
+            && (bool) $this->getCheckoutSetting('require_attendee_note', false);
     }
 
     // Business Logic

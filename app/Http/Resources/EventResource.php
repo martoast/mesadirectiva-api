@@ -58,6 +58,12 @@ class EventResource extends JsonResource
             // Email & Ticket customization
             'email_settings' => $this->email_settings,
 
+            // Checkout field configuration
+            'checkout_settings' => $this->checkout_settings,
+
+            // Stripe routing
+            'stripe_account' => $this->stripe_account ?? 'cafeteria',
+
             // Computed Fields
             'can_purchase' => $this->canPurchase(),
             'purchase_blocked_reason' => $this->getPurchaseBlockedReason(),

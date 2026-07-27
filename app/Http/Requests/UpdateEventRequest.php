@@ -47,6 +47,9 @@ class UpdateEventRequest extends FormRequest
             'seating_type' => 'sometimes|in:general_admission,seated',
             'reservation_minutes' => 'sometimes|integer|min:5|max:60',
 
+            // Stripe account routing
+            'stripe_account' => 'sometimes|in:cafeteria,rifa,eventos',
+
             // Settings
             'is_private' => 'sometimes|boolean',
             'show_remaining' => 'sometimes|boolean',
@@ -59,6 +62,12 @@ class UpdateEventRequest extends FormRequest
             'faq_items' => 'nullable|array|max:20',
             'faq_items.*.question' => 'required_with:faq_items|string|max:255',
             'faq_items.*.answer' => 'required_with:faq_items|string|max:2000',
+
+            // Checkout field configuration
+            'checkout_settings' => 'nullable|array',
+            'checkout_settings.collect_student_fields' => 'nullable|boolean',
+            'checkout_settings.require_student_fields' => 'nullable|boolean',
+            'checkout_settings.require_attendee_note' => 'nullable|boolean',
 
             // Email & Ticket customization
             'email_settings' => 'nullable|array',

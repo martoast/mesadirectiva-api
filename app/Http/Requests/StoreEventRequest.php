@@ -11,6 +11,15 @@ class StoreEventRequest extends FormRequest
         return $this->user()->can('create', \App\Models\Event::class);
     }
 
+    /**
+     * Event creation is pinned to Tijuana time — the timezone selector was
+     * removed from the UI to avoid errors, and any client value is overridden.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['timezone' => 'America/Tijuana']);
+    }
+
     public function rules(): array
     {
         return [
@@ -43,6 +52,15 @@ class StoreEventRequest extends FormRequest
             // Event Type
             'seating_type' => 'sometimes|in:general_admission,seated',
             'reservation_minutes' => 'sometimes|integer|min:5|max:60',
+
+            // Stripe account routing
+            'stripe_account' => 'sometimes|in:cafeteria,rifa,eventos',
+
+            // Checkout field configuration
+            'checkout_settings' => 'nullable|array',
+            'checkout_settings.collect_student_fields' => 'nullable|boolean',
+            'checkout_settings.require_student_fields' => 'nullable|boolean',
+            'checkout_settings.require_attendee_note' => 'nullable|boolean',
 
             // Settings
             'is_private' => 'sometimes|boolean',

@@ -47,6 +47,7 @@ class CreateCheckoutRequest extends FormRequest
             $rules['tiers.*.attendees'] = 'nullable|array';
             $rules['tiers.*.attendees.*.name'] = 'nullable|string|max:255';
             $rules['tiers.*.attendees.*.note'] = 'nullable|string|max:500';
+            $rules['tiers.*.attendees.*.key'] = 'nullable|string|max:50';
             // Keep legacy support for simple tickets
             $rules['tickets'] = 'nullable|integer|min:1|max:10';
         }
@@ -80,6 +81,40 @@ class CreateCheckoutRequest extends FormRequest
 
                 if (empty($tiers) && !$tickets) {
                     $validator->errors()->add('tiers', 'You must select at least one ticket tier or specify tickets.');
+                }
+
+                // Per-event required student fields (name + clave) and note
+                if ($event->requiresStudentFields() || $event->requiresAttendeeNote()) {
+                    foreach ($tiers as $tierIndex => $tierData) {
+                        $quantity = (int) ($tierData['quantity'] ?? 0);
+                        $attendees = $tierData['attendees'] ?? [];
+
+                        for ($i = 0; $i < $quantity; $i++) {
+                            $attendee = $attendees[$i] ?? [];
+
+                            if ($event->requiresStudentFields()) {
+                                if (empty(trim($attendee['name'] ?? ''))) {
+                                    $validator->errors()->add(
+                                        "tiers.{$tierIndex}.attendees.{$i}.name",
+                                        'El nombre del alumno es obligatorio para cada boleto.'
+                                    );
+                                }
+                                if (empty(trim($attendee['key'] ?? ''))) {
+                                    $validator->errors()->add(
+                                        "tiers.{$tierIndex}.attendees.{$i}.key",
+                                        'La clave del alumno es obligatoria para cada boleto.'
+                                    );
+                                }
+                            }
+
+                            if ($event->requiresAttendeeNote() && empty(trim($attendee['note'] ?? ''))) {
+                                $validator->errors()->add(
+                                    "tiers.{$tierIndex}.attendees.{$i}.note",
+                                    'Este campo es obligatorio para cada boleto (salón, generación, etc.).'
+                                );
+                            }
+                        }
+                    }
                 }
             }
         });

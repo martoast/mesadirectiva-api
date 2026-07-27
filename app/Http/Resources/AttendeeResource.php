@@ -18,6 +18,7 @@ class AttendeeResource extends JsonResource
             'id' => $this->id,
             'attendee_name' => $this->attendee_name,
             'attendee_note' => $this->attendee_note,
+            'student_key' => $this->student_key,
             'item_type' => $this->item_type,
             'item_name' => $this->item_name,
             'quantity' => $this->quantity,

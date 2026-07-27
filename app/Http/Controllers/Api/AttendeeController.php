@@ -34,6 +34,7 @@ class AttendeeController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('attendee_name', 'like', "%{$search}%")
+                  ->orWhere('student_key', 'like', "%{$search}%")
                   ->orWhereHas('order', function ($oq) use ($search) {
                       $oq->where('customer_name', 'like', "%{$search}%")
                          ->orWhere('customer_email', 'like', "%{$search}%")
