@@ -35,10 +35,41 @@ class PublicSeatingController extends Controller
             ], 400);
         }
 
-        $tiers = $event->activeTicketTiers;
+        $tiers = $event->activeTicketTiers()->with('dependsOn')->get();
 
         return response()->json([
             'tiers' => TicketTierResource::collection($tiers),
+        ]);
+    }
+
+    /**
+     * Check whether a student key may buy a dependent tier (parcialidades).
+     * Pago 2 is only available once Pago 1 is completed for that clave, etc.
+     */
+    public function tierEligibility(Request $request, string $slug, int $tierId): JsonResponse
+    {
+        $request->validate([
+            'student_key' => 'required|string|max:50',
+        ]);
+
+        $event = Event::where('slug', $slug)
+            ->where('status', 'live')
+            ->firstOrFail();
+
+        $tier = $event->ticketTiers()->where('id', $tierId)->firstOrFail();
+
+        if (!$tier->depends_on_tier_id) {
+            return response()->json(['eligible' => true, 'missing_tiers' => []]);
+        }
+
+        $missing = $tier->missingPrerequisitesForStudent($request->input('student_key'));
+
+        return response()->json([
+            'eligible' => empty($missing),
+            'missing_tiers' => array_map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+            ], $missing),
         ]);
     }
 

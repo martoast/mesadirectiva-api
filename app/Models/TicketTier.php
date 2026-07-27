@@ -30,6 +30,7 @@ class TicketTier extends Model
         'hide_available_quantity',
         'is_hidden',
         'sort_order',
+        'depends_on_tier_id',
         'is_active',
     ];
 
@@ -61,6 +62,63 @@ class TicketTier extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function dependsOn(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'depends_on_tier_id');
+    }
+
+    public function dependents(): HasMany
+    {
+        return $this->hasMany(self::class, 'depends_on_tier_id');
+    }
+
+    // Sequential installments (parcialidades)
+
+    /**
+     * All prerequisite tiers in order (e.g. Pago 3 → [Pago 1, Pago 2]).
+     * Chains are capped at depth 3 by validation; the loop guard is a safety net.
+     */
+    public function prerequisiteChain(): array
+    {
+        $chain = [];
+        $current = $this->dependsOn;
+        $guard = 0;
+
+        while ($current && $guard < 5) {
+            array_unshift($chain, $current);
+            $current = $current->dependsOn;
+            $guard++;
+        }
+
+        return $chain;
+    }
+
+    /**
+     * Prerequisite tiers this student key has NOT yet completed
+     * (a completed order containing that tier with the same normalized key).
+     */
+    public function missingPrerequisitesForStudent(?string $studentKey): array
+    {
+        $chain = $this->prerequisiteChain();
+
+        if (empty($chain)) {
+            return [];
+        }
+
+        $studentKey = OrderItem::normalizeStudentKey($studentKey);
+
+        if (!$studentKey) {
+            return $chain;
+        }
+
+        return array_values(array_filter($chain, function (self $tier) use ($studentKey) {
+            return !OrderItem::where('ticket_tier_id', $tier->id)
+                ->where('student_key', $studentKey)
+                ->whereHas('order', fn ($q) => $q->where('status', 'completed'))
+                ->exists();
+        }));
     }
 
     // Business Logic

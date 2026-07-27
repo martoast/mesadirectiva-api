@@ -53,6 +53,7 @@ Route::prefix('public')->group(function () {
 
     // Ticket Tiers (for General Admission events)
     Route::get('/events/{slug}/ticket-tiers', [PublicSeatingController::class, 'ticketTiers']);
+    Route::get('/events/{slug}/ticket-tiers/{tierId}/eligibility', [PublicSeatingController::class, 'tierEligibility']);
 
     // Tables & Seats (for Seated events)
     Route::get('/events/{slug}/tables', [PublicSeatingController::class, 'tables']);
@@ -66,8 +67,11 @@ Route::prefix('public')->group(function () {
 // Checkout (public but requires event to be live)
 Route::post('/checkout/create-session', [CheckoutController::class, 'createSession']);
 
-// Stripe Webhooks
+// Stripe Webhooks — one endpoint per account; the bare route stays as a
+// legacy alias for the cafeteria account until Stripe dashboards are updated.
 Route::post('/webhooks/stripe', [WebhookController::class, 'handleStripe']);
+Route::post('/webhooks/stripe/{account}', [WebhookController::class, 'handleStripe'])
+    ->whereIn('account', ['cafeteria', 'rifa', 'eventos']);
 
 /*
 |--------------------------------------------------------------------------

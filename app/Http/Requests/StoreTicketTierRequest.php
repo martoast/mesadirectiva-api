@@ -33,6 +33,7 @@ class StoreTicketTierRequest extends FormRequest
             'hide_available_quantity' => 'boolean',
             'is_hidden' => 'boolean',
             'sort_order' => 'nullable|integer|min:0',
+            'depends_on_tier_id' => 'nullable|integer|exists:ticket_tiers,id',
             'is_active' => 'boolean',
         ];
     }

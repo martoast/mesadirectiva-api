@@ -31,6 +31,13 @@ class TicketTierResource extends JsonResource
             'min_per_order' => $this->min_per_order,
             'max_per_order' => $this->max_per_order,
 
+            // Sequential installments (parcialidades)
+            'depends_on_tier_id' => $this->depends_on_tier_id,
+            'depends_on_tier' => $this->whenLoaded('dependsOn', fn () => $this->dependsOn ? [
+                'id' => $this->dependsOn->id,
+                'name' => $this->dependsOn->name,
+            ] : null),
+
             // Display options
             'show_description' => $this->show_description,
             'hide_available_quantity' => $this->hide_available_quantity,

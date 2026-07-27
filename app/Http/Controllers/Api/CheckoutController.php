@@ -79,6 +79,28 @@ class CheckoutController extends Controller
                     ], 422);
                 }
 
+                // Sequential installments: every ticket of a dependent tier needs
+                // a clave whose prerequisite payments are already completed.
+                if ($tier->depends_on_tier_id) {
+                    $attendees = $tierData['attendees'] ?? [];
+                    for ($i = 0; $i < $tierData['quantity']; $i++) {
+                        $studentKey = OrderItem::normalizeStudentKey($attendees[$i]['key'] ?? null);
+
+                        if (!$studentKey) {
+                            return response()->json([
+                                'error' => "La clave del alumno es obligatoria para '{$tier->name}'.",
+                            ], 422);
+                        }
+
+                        $missing = $tier->missingPrerequisitesForStudent($studentKey);
+                        if (!empty($missing)) {
+                            return response()->json([
+                                'error' => "La clave {$studentKey} aún no tiene completado '{$missing[0]->name}', requerido antes de '{$tier->name}'.",
+                            ], 422);
+                        }
+                    }
+                }
+
                 $price = $tier->getCurrentPrice();
                 $subtotal += $price * $tierData['quantity'];
                 $lineItemsData[] = [
@@ -166,6 +188,7 @@ class CheckoutController extends Controller
                                 'total_price' => $lineItem['price'],
                                 'attendee_name' => $attendee['name'] ?? null,
                                 'attendee_note' => $attendee['note'] ?? null,
+                                'student_key' => OrderItem::normalizeStudentKey($attendee['key'] ?? null),
                             ]);
                         }
                     } else {
@@ -351,13 +374,14 @@ class CheckoutController extends Controller
             if ($lineItem['type'] === 'tier') {
                 $tier = $lineItem['tier'];
                 $currency = strtolower($tier->currency ?? 'mxn');
+                $productData = ['name' => $event->name . ' - ' . $tier->name];
+                if (!empty($tier->description)) {
+                    $productData['description'] = $tier->description;
+                }
                 $lineItems[] = [
                     'price_data' => [
                         'currency' => $currency,
-                        'product_data' => [
-                            'name' => $event->name . ' - ' . $tier->name,
-                            'description' => $tier->description,
-                        ],
+                        'product_data' => $productData,
                         'unit_amount' => (int) ($lineItem['price'] * 100),
                     ],
                     'quantity' => $lineItem['quantity'],
@@ -378,13 +402,14 @@ class CheckoutController extends Controller
 
         foreach ($extraItems as $extraItem) {
             $item = EventItem::find($extraItem['item_id']);
+            $productData = ['name' => $item->name];
+            if (!empty($item->description)) {
+                $productData['description'] = $item->description;
+            }
             $lineItems[] = [
                 'price_data' => [
                     'currency' => 'mxn',
-                    'product_data' => [
-                        'name' => $item->name,
-                        'description' => $item->description,
-                    ],
+                    'product_data' => $productData,
                     'unit_amount' => (int) ($item->price * 100),
                 ],
                 'quantity' => $extraItem['quantity'],
@@ -431,13 +456,14 @@ class CheckoutController extends Controller
 
         foreach ($extraItems as $extraItem) {
             $item = EventItem::find($extraItem['item_id']);
+            $productData = ['name' => $item->name];
+            if (!empty($item->description)) {
+                $productData['description'] = $item->description;
+            }
             $lineItems[] = [
                 'price_data' => [
                     'currency' => 'mxn',
-                    'product_data' => [
-                        'name' => $item->name,
-                        'description' => $item->description,
-                    ],
+                    'product_data' => $productData,
                     'unit_amount' => (int) ($item->price * 100),
                 ],
                 'quantity' => $extraItem['quantity'],
@@ -452,7 +478,8 @@ class CheckoutController extends Controller
      */
     private function finalizeCheckout(Event $event, Order $order, array $lineItems, ?string $reservationToken = null): JsonResponse
     {
-        $successUrl = config('app.frontend_url') . "/app/events/{$event->slug}/checkout-success";
+        $successUrl = config('app.frontend_url')
+            . "/app/events/{$event->slug}/checkout-success?order={$order->order_number}";
         $cancelUrl = config('app.frontend_url') . "/app/events/{$event->slug}";
 
         $metadata = [
@@ -464,7 +491,9 @@ class CheckoutController extends Controller
             $metadata['reservation_token'] = $reservationToken;
         }
 
-        $session = $this->stripeService->createCheckoutSessionWithLineItems(
+        $stripe = $this->stripeService->forEvent($event);
+
+        $session = $stripe->createCheckoutSessionWithLineItems(
             $order,
             $lineItems,
             $successUrl,
@@ -474,6 +503,7 @@ class CheckoutController extends Controller
 
         $order->update([
             'stripe_checkout_session_id' => $session->id,
+            'stripe_account' => $stripe->account(),
         ]);
 
         return response()->json([
