@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Event;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -172,5 +173,70 @@ class ReportService
         }
 
         return $query;
+    }
+
+    /**
+     * Summary report for coordinadoras (role: viewer) — one row per sold
+     * ticket, restricted to the columns configured in config/reports.php.
+     */
+    public function getSummaryReport(User $user, array $filters = []): Collection
+    {
+        $eventIds = Event::accessibleBy($user)->pluck('id');
+
+        $query = OrderItem::where('item_type', 'ticket')
+            ->whereHas('order', function ($q) use ($eventIds, $filters) {
+                $q->where('status', 'completed')->whereIn('event_id', $eventIds);
+
+                if (!empty($filters['event_id'])) {
+                    $q->where('event_id', $filters['event_id']);
+                }
+
+                if (!empty($filters['date_from'])) {
+                    $q->whereDate('paid_at', '>=', $filters['date_from']);
+                }
+
+                if (!empty($filters['date_to'])) {
+                    $q->whereDate('paid_at', '<=', $filters['date_to']);
+                }
+            })
+            ->with(['order.event:id,name,slug,group_id', 'order.event.group:id,name', 'ticketTier:id,name']);
+
+        if (!empty($filters['group_id'])) {
+            $query->whereHas('order.event', function ($q) use ($filters) {
+                $q->where('group_id', $filters['group_id']);
+            });
+        }
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('attendee_name', 'like', "%{$search}%")
+                    ->orWhere('student_key', 'like', "%{$search}%")
+                    ->orWhereHas('order', function ($oq) use ($search) {
+                        $oq->where('customer_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $columns = array_keys(config('reports.summary_columns'));
+
+        return $query->get()
+            ->sortByDesc(fn ($item) => $item->order->paid_at)
+            ->values()
+            ->map(function ($item) use ($columns) {
+                $all = [
+                    'event' => $item->order->event->name ?? '',
+                    'group' => $item->order->event->group->name ?? '',
+                    'attendee_name' => $item->attendee_name ?: $item->order->customer_name,
+                    'student_key' => $item->student_key,
+                    'note' => $item->attendee_note,
+                    'tier' => $item->ticketTier->name ?? $item->item_name,
+                    'quantity' => $item->quantity,
+                    'total' => (float) $item->total_price,
+                    'date' => $item->order->paid_at?->format('Y-m-d'),
+                ];
+
+                return array_intersect_key($all, array_flip($columns));
+            });
     }
 }
