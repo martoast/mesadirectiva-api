@@ -24,6 +24,7 @@ class Order extends Model
         'total',
         'stripe_checkout_session_id',
         'stripe_payment_intent_id',
+        'stripe_account',
         'paid_at',
     ];
 

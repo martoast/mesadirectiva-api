@@ -85,7 +85,16 @@ class EventController extends Controller
 
         $this->authorize('update', $event);
 
-        $event->update($request->validated());
+        $data = $request->validated();
+
+        // Stripe product/price ids are account-scoped: if the event moves to a
+        // different account, drop them so publish() recreates them there.
+        if (isset($data['stripe_account']) && $data['stripe_account'] !== $event->stripe_account) {
+            $data['stripe_product_id'] = null;
+            $data['stripe_price_id'] = null;
+        }
+
+        $event->update($data);
 
         return response()->json([
             'message' => 'Event updated successfully',
@@ -120,7 +129,7 @@ class EventController extends Controller
 
         // Create Stripe product and price if not exists
         if (!$event->stripe_product_id) {
-            $stripeData = $this->stripeService->createEventProduct($event);
+            $stripeData = $this->stripeService->forEvent($event)->createEventProduct($event);
             $event->update([
                 'stripe_product_id' => $stripeData['product_id'],
                 'stripe_price_id' => $stripeData['price_id'],

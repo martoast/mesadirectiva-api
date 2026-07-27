@@ -20,6 +20,7 @@ class OrderResource extends JsonResource
             'subtotal' => (float) $this->subtotal,
             'total' => (float) $this->total,
             'ticket_count' => $this->getTicketCount(),
+            'stripe_account' => $this->stripe_account,
             'paid_at' => $this->paid_at,
             'event' => new EventResource($this->whenLoaded('event')),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),

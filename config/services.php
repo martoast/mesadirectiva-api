@@ -36,9 +36,28 @@ return [
     ],
 
     'stripe' => [
-        'key' => env('STRIPE_KEY'),
-        'secret' => env('STRIPE_SECRET'),
-        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        // Money is routed per event/product to one of three Stripe accounts.
+        // 'cafeteria' keeps the legacy STRIPE_* envs so existing deploys keep working.
+        'accounts' => [
+            'cafeteria' => [
+                'key' => env('STRIPE_CAFETERIA_KEY', env('STRIPE_KEY')),
+                'secret' => env('STRIPE_CAFETERIA_SECRET', env('STRIPE_SECRET')),
+                'webhook_secret' => env('STRIPE_CAFETERIA_WEBHOOK_SECRET', env('STRIPE_WEBHOOK_SECRET')),
+            ],
+            // Falls back to the dashboard-named vars ("Rifa entre amigos" /
+            // "Taquilla Virtual") so production can use either naming.
+            'rifa' => [
+                'key' => env('STRIPE_RIFA_KEY', env('STRIPE_KEY_RIFA_ENTRE_AMIGOS')),
+                'secret' => env('STRIPE_RIFA_SECRET', env('STRIPE_SECRET_RIFA_ENTRE_AMIGOS')),
+                'webhook_secret' => env('STRIPE_RIFA_WEBHOOK_SECRET', env('STRIPE_WEBHOOK_SECRET_RIFA_ENTRE_AMIGOS')),
+            ],
+            'eventos' => [
+                'key' => env('STRIPE_EVENTOS_KEY', env('STRIPE_KEY_TAQUILLA_VIRTUAL')),
+                'secret' => env('STRIPE_EVENTOS_SECRET', env('STRIPE_SECRET_TAQUILLA_VIRTUAL')),
+                'webhook_secret' => env('STRIPE_EVENTOS_WEBHOOK_SECRET', env('STRIPE_WEBHOOK_SECRET_TAQUILLA_VIRTUAL')),
+            ],
+        ],
+        'default_account' => env('STRIPE_DEFAULT_ACCOUNT', 'cafeteria'),
     ],
 
     'google' => [

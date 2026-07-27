@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\OrderTickets;
-use App\Models\Event;
 use App\Models\EventItem;
 use App\Models\Order;
 use App\Models\Seat;
@@ -27,12 +26,19 @@ class WebhookController extends Controller
 
     /**
      * Handle Stripe webhooks
-     * POST /api/webhooks/stripe
+     * POST /api/webhooks/stripe            (legacy, cafeteria account)
+     * POST /api/webhooks/stripe/{account}  (cafeteria | rifa | eventos)
      */
-    public function handleStripe(Request $request): Response
+    public function handleStripe(Request $request, string $account = 'cafeteria'): Response
     {
+        if (!config("services.stripe.accounts.{$account}")) {
+            Log::error('Stripe webhook for unknown account', ['account' => $account]);
+            return response('Unknown account', 404);
+        }
+
         Log::info('Stripe webhook endpoint hit', [
             'ip' => $request->ip(),
+            'account' => $account,
             'content_length' => strlen($request->getContent()),
         ]);
 
@@ -45,7 +51,7 @@ class WebhookController extends Controller
         }
 
         try {
-            $event = $this->stripeService->constructWebhookEvent($payload, $signature);
+            $event = $this->stripeService->forAccount($account)->constructWebhookEvent($payload, $signature);
         } catch (\Exception $e) {
             Log::error('Stripe webhook signature verification failed', [
                 'error' => $e->getMessage(),
@@ -130,15 +136,12 @@ class WebhookController extends Controller
                 });
             } else {
                 // General admission - update ticket tier quantities
+                // (items without a tier id have no inventory counter; events.tickets_sold no longer exists)
                 $ticketItems = $order->items()->where('item_type', 'ticket')->get();
                 foreach ($ticketItems as $ticketItem) {
                     if ($ticketItem->ticket_tier_id) {
                         TicketTier::where('id', $ticketItem->ticket_tier_id)
                             ->increment('quantity_sold', $ticketItem->quantity);
-                    } else {
-                        // Legacy support - increment event tickets_sold
-                        Event::where('id', $order->event_id)
-                            ->increment('tickets_sold', $ticketItem->quantity);
                     }
                 }
             }
@@ -218,10 +221,6 @@ class WebhookController extends Controller
                     if ($ticketItem->ticket_tier_id) {
                         TicketTier::where('id', $ticketItem->ticket_tier_id)
                             ->decrement('quantity_sold', $ticketItem->quantity);
-                    } else {
-                        // Legacy support
-                        Event::where('id', $order->event_id)
-                            ->decrement('tickets_sold', $ticketItem->quantity);
                     }
                 }
             }

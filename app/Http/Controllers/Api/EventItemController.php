@@ -42,7 +42,7 @@ class EventItemController extends Controller
 
         // Create Stripe price if event has a product
         if ($event->stripe_product_id) {
-            $priceId = $this->stripeService->createItemPrice($item, $event->stripe_product_id);
+            $priceId = $this->stripeService->forEvent($event)->createItemPrice($item, $event->stripe_product_id);
             $item->update(['stripe_price_id' => $priceId]);
         }
 
