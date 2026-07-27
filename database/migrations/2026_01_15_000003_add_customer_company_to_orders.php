@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Guarded: renamed from misdated 2025_01_15; production already has this.
+        if (Schema::hasColumn('orders', 'customer_company')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             $table->string('customer_company')->nullable()->after('customer_phone');
         });

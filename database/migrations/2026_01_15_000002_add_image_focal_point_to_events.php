@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Guarded: renamed from misdated 2025_01_15; production already has these.
+        if (Schema::hasColumn('events', 'image_focal_x')) {
+            return;
+        }
+
         Schema::table('events', function (Blueprint $table) {
             // Focal point coordinates as percentages (0-100)
             // Default 50,50 = center
