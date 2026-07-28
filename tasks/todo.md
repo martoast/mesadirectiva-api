@@ -17,10 +17,10 @@ Money routing per product/event. Accounts:
 Code COMPLETE and TESTED locally (fresh Sail stack, all migrations, real browser E2E purchase on the eventos route with test card — order completed via `/webhooks/stripe/eventos`, inventory + student_key + ticket code verified; parcialidades unlock verified in UI and API). Live keys wired: config falls back to `STRIPE_KEY_RIFA_ENTRE_AMIGOS` / `STRIPE_KEY_TAQUILLA_VIRTUAL` env names. Local `.env` has a clearly marked TEMP block pointing rifa/eventos at the cafeteria TEST keys + stripe-cli webhook secret — DELETE the temp block before deploying.
 Remaining for production:
 - [x] LIVE webhook endpoints registered + verified via Stripe API on all three accounts (2026-07-16). Secrets documented in local .env next to the live keys; set them in the DO prod env. NOTE: the org also has a 4th Stripe account "Tiendita" — deliberately NOT routed by this platform (confirmed with Alex); its stray webhook endpoint should be deleted from that dashboard.
-- [ ] Set the three whsec values in DigitalOcean App Platform env
+- [x] whsec values set in DO env; prod deploy + migrations done; webhook routes verified live (2026-07-17)
 - [ ] Fix Gmail SMTP: `apfimac@gmail.com` app password is rejected (535) — ticket emails currently fail
 - [ ] Prod deploy: run migrations (note: three misdated 2025_01_15 migrations were renamed to 2026_01_15 with hasColumn guards — safe re-run on prod)
-- [ ] `php artisan stripe:migrate-events eventos --dry-run` then for real
+- [x] 13 events (all 2026, all eventos-type) moved to Taquilla Virtual (2026-07-17)
 - [ ] One LIVE-mode smoke purchase + refund per account after DNS/webhooks are set
 
 ### API changes
