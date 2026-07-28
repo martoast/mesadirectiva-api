@@ -77,14 +77,20 @@ class StripeService
      */
     public function createEventProduct(Event $event): array
     {
-        $product = $this->client()->products->create([
+        $productData = [
             'name' => $event->name,
-            'description' => strip_tags($event->description ?? ''),
             'metadata' => [
                 'event_id' => $event->id,
                 'event_slug' => $event->slug,
             ],
-        ]);
+        ];
+
+        $description = trim(strip_tags($event->description ?? ''));
+        if ($description !== '') {
+            $productData['description'] = $description;
+        }
+
+        $product = $this->client()->products->create($productData);
 
         // Use first active tier's price, or 0 if no tiers
         $tier = $event->activeTicketTiers()->first();
