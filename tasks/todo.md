@@ -10,29 +10,24 @@ See "Shipped" at the bottom and `git log` for detail — nothing left to do ther
 
 ## Open
 
-### 1. Gmail SMTP is broken — ticket emails are failing
-`apfimac@gmail.com` app password is rejected (535). Buyers complete payment and get
-no ticket email. Highest-impact open item. Fix the app password or move to a real
-transactional sender (SES/Postmark) — the org is already on AWS/DO.
-
-### 2. No LIVE smoke test per Stripe account
+### 1. No LIVE smoke test per Stripe account
 Multi-Stripe is live but never verified end-to-end with real money. Do one live
 purchase + refund on each of `cafeteria`, `rifa`, `eventos`, confirming order
-completion, inventory decrement, and the ticket email (blocked on #1).
+completion, inventory decrement, and the ticket email.
 
-### 3. Password-reset emails point at a route that doesn't exist
+### 2. Password-reset emails point at a route that doesn't exist
 `app/Providers/AppServiceProvider.php:27` builds `{frontend_url}/password-reset/{token}?email=`,
 but the frontend route is `/reset-password?token=&email=` (`app/pages/reset-password.vue`).
 Every reset link 404s. Fix the URL here (one line) — the frontend is already correct.
 
-### 4. GA checkout can oversell
+### 3. GA checkout can oversell
 `CheckoutController` does no locking or inventory hold between creating the Stripe
 session and the webhook completing the order. Two buyers can take the last ticket
 concurrently. Seated events are safe (`ReservationService` locks); GA is not.
 Options: short-lived tier hold mirroring `ReservationService`, or a
 `lockForUpdate` + capacity re-check in the webhook that fails the order cleanly.
 
-### 5. Production data cleanup
+### 4. Production data cleanup
 Events ids 1–4 are seeder/demo leftovers (3 still `live` and publicly visible) and
 id 10 is a draft duplicate. Verify no orders reference them, then remove.
 
@@ -56,3 +51,22 @@ id 10 is a draft duplicate. Verify no orders reference them, then remove.
 - Three misdated `2025_01_15_*` migrations renamed to `2026_01_15_*` with `hasColumn`
   guards (fresh installs broke otherwise; prod-safe to re-run).
 - Legacy webhook path no longer touches the dropped `events.tickets_sold` column.
+
+---
+
+## Not a bug (do not re-investigate)
+
+**Gmail SMTP / "app password rejected (535)"** — an earlier revision of this file listed
+this as the top open item. It is not broken and, per Alex (2026-09-05), ticket emails
+have been arriving normally the whole time; no one ever reported a missing email.
+Verified 2026-09-05: the app password authenticates against `smtp.gmail.com:587`, prod
+resolves `mailer=smtp` with the correct host/port/user/from, and the container reaches
+Gmail on 587. `MAIL_SCHEME=null` and the absent `MAIL_ENCRYPTION` are both fine —
+Laravel 12 derives the scheme from the port (587 → STARTTLS) and ignores
+`MAIL_ENCRYPTION` entirely.
+
+Standing caveat, not a defect: `OrderTickets` is sent synchronously inside
+`WebhookController` under `catch (\Exception $e)`, which swallows *any* failure —
+SMTP, dompdf, QR, or S3 — into one "Failed to send tickets email" log line. If tickets
+ever do go missing, that log line is the place to look, and it will not tell you which
+of those failed without widening the catch.
