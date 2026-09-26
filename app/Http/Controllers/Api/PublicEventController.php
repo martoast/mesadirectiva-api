@@ -23,6 +23,10 @@ class PublicEventController extends Controller
             ->with('group')
             ->orderBy('starts_at', 'asc');
 
+        if (in_array($request->get('kind'), [Event::KIND_EVENT, Event::KIND_PRODUCT], true)) {
+            $query->ofKind($request->kind);
+        }
+
         if ($request->has('group')) {
             $query->whereHas('group', function ($q) use ($request) {
                 $q->where('slug', $request->group);

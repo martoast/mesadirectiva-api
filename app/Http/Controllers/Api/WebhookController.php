@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\OrderReceipt;
 use App\Mail\OrderTickets;
 use App\Models\EventItem;
 use App\Models\Order;
@@ -27,7 +28,7 @@ class WebhookController extends Controller
     /**
      * Handle Stripe webhooks
      * POST /api/webhooks/stripe            (legacy, cafeteria account)
-     * POST /api/webhooks/stripe/{account}  (cafeteria | rifa | eventos)
+     * POST /api/webhooks/stripe/{account}  (cafeteria | rifa | eventos | tiendita)
      */
     public function handleStripe(Request $request, string $account = 'cafeteria'): Response
     {
@@ -154,10 +155,11 @@ class WebhookController extends Controller
             }
         });
 
-        // Send tickets email to customer
+        // Send tickets (events) or a plain receipt (products) to the customer
         try {
-            Mail::to($order->customer_email)->send(new OrderTickets($order));
-            Log::info('Tickets email sent', [
+            $mailable = $order->event->isProduct() ? new OrderReceipt($order) : new OrderTickets($order);
+            Mail::to($order->customer_email)->send($mailable);
+            Log::info($order->event->isProduct() ? 'Receipt email sent' : 'Tickets email sent', [
                 'order_id' => $order->id,
                 'email' => $order->customer_email,
             ]);

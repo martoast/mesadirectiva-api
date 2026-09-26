@@ -13,6 +13,7 @@ class EventResource extends JsonResource
         return [
             'id' => $this->id,
             'slug' => $this->slug,
+            'kind' => $this->kind ?? 'event',
 
             // Core Info
             'name' => $this->name,

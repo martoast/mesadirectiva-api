@@ -13,8 +13,15 @@ class Event extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const KIND_EVENT = 'event';
+    public const KIND_PRODUCT = 'product';
+
+    // Every product sells through the store's own Stripe account.
+    public const PRODUCT_STRIPE_ACCOUNT = 'tiendita';
+
     protected $fillable = [
         'slug',
+        'kind',
         'group_id',
         'name',
         'description',
@@ -230,6 +237,20 @@ class Event extends Model
 
     // Business Logic
 
+    public function isProduct(): bool
+    {
+        return $this->kind === self::KIND_PRODUCT;
+    }
+
+    /**
+     * Products stop selling once their "available until" date (ends_at) passes.
+     * Events keep relying on per-tier sales windows only.
+     */
+    public function productSalesEnded(): bool
+    {
+        return $this->isProduct() && $this->ends_at && $this->ends_at->isPast();
+    }
+
     public function isSeated(): bool
     {
         return $this->seating_type === 'seated';
@@ -256,6 +277,10 @@ class Event extends Model
             return false;
         }
 
+        if ($this->productSalesEnded()) {
+            return false;
+        }
+
         if ($this->isSeated()) {
             // For seated events, check if any tables or seats are available
             return $this->hasAvailableTablesOrSeats();
@@ -269,6 +294,10 @@ class Event extends Model
     {
         if ($this->status !== 'live') {
             return 'not_live';
+        }
+
+        if ($this->productSalesEnded()) {
+            return 'sales_ended';
         }
 
         if ($this->isSeated()) {
@@ -474,6 +503,11 @@ class Event extends Model
     public function scopeLive($query)
     {
         return $query->where('status', 'live');
+    }
+
+    public function scopeOfKind($query, string $kind)
+    {
+        return $query->where('kind', $kind);
     }
 
     public function scopePublic($query)
