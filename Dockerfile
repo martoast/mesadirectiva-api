@@ -74,4 +74,6 @@ RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions sto
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Run pending migrations before serving so every deploy brings its own schema.
+# A failed migration stops the container, and the platform keeps the previous deploy.
+CMD ["/bin/bash", "-c", "runuser -u sail -- php /var/www/html/artisan migrate --force --no-interaction && exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"]
