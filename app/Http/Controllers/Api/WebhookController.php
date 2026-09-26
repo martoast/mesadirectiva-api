@@ -28,7 +28,7 @@ class WebhookController extends Controller
     /**
      * Handle Stripe webhooks
      * POST /api/webhooks/stripe            (legacy, cafeteria account)
-     * POST /api/webhooks/stripe/{account}  (cafeteria | rifa | eventos | tiendita)
+     * POST /api/webhooks/stripe/{account}  (cafeteria | rifa | eventos)
      */
     public function handleStripe(Request $request, string $account = 'cafeteria'): Response
     {

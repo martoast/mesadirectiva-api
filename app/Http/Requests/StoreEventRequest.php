@@ -16,7 +16,7 @@ class StoreEventRequest extends FormRequest
      * removed from the UI to avoid errors, and any client value is overridden.
      *
      * Products have no date or venue: they go on sale when created, always
-     * sell through Tiendita, and use ticket tiers as their variants.
+     * sell through Cafetería, and carry their price/quantity on a ticket tier.
      */
     protected function prepareForValidation(): void
     {
@@ -27,6 +27,7 @@ class StoreEventRequest extends FormRequest
                 'starts_at' => now()->toIso8601String(),
                 'stripe_account' => \App\Models\Event::PRODUCT_STRIPE_ACCOUNT,
                 'seating_type' => 'general_admission',
+                'checkout_settings' => \App\Models\Event::PRODUCT_CHECKOUT_SETTINGS,
             ]);
         }
     }
@@ -44,7 +45,8 @@ class StoreEventRequest extends FormRequest
             'kind' => 'sometimes|in:event,product',
 
             // Core Info (required)
-            'group_id' => 'required|exists:groups,id',
+            // Products don't ask for a group; the controller assigns one for permissions
+            'group_id' => $isProduct ? 'nullable|exists:groups,id' : 'required|exists:groups,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'image' => 'nullable|url|max:2000',
@@ -75,7 +77,9 @@ class StoreEventRequest extends FormRequest
             'reservation_minutes' => 'sometimes|integer|min:5|max:60',
 
             // Stripe account routing
-            'stripe_account' => $isProduct ? 'in:tiendita' : 'sometimes|in:cafeteria,rifa,eventos',
+            'stripe_account' => $isProduct
+                ? 'in:' . \App\Models\Event::PRODUCT_STRIPE_ACCOUNT
+                : 'sometimes|in:cafeteria,rifa,eventos',
 
             // Checkout field configuration
             'checkout_settings' => 'nullable|array',

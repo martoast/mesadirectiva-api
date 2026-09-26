@@ -8,6 +8,8 @@ use App\Http\Requests\UpdateEventRequest;
 use App\Http\Resources\EventResource;
 use App\Http\Resources\OrderResource;
 use App\Models\Event;
+use App\Models\Group;
+use App\Models\User;
 use App\Services\ImageService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
@@ -56,8 +58,14 @@ class EventController extends Controller
 
     public function store(StoreEventRequest $request): JsonResponse
     {
+        $data = $request->validated();
+
+        if (($data['kind'] ?? null) === Event::KIND_PRODUCT && empty($data['group_id'])) {
+            $data['group_id'] = $this->defaultGroupIdFor($request->user());
+        }
+
         $event = Event::create([
-            ...$request->validated(),
+            ...$data,
             'status' => 'draft',
             'created_by' => $request->user()->id,
         ]);
@@ -90,8 +98,8 @@ class EventController extends Controller
         $data = $request->validated();
 
         if ($event->isProduct()) {
-            // Products always sell through Tiendita and have no seating.
-            unset($data['stripe_account'], $data['seating_type']);
+            // Products always sell through Cafetería with fixed buyer fields.
+            unset($data['stripe_account'], $data['seating_type'], $data['checkout_settings']);
         } elseif (array_key_exists('ends_at', $data) && $data['ends_at'] === null) {
             // Only products may leave the end date empty.
             unset($data['ends_at']);
@@ -143,7 +151,7 @@ class EventController extends Controller
                 $stripe = $this->stripeService->forEvent($event);
                 $stripeData = $stripe->createEventProduct($event);
             } catch (\InvalidArgumentException $e) {
-                // Account keys missing (e.g. Tiendita before its env vars are set)
+                // Account keys missing (e.g. an account whose env vars aren't set)
                 return response()->json([
                     'message' => "La cuenta de Stripe '{$event->stripe_account}' no está configurada todavía.",
                 ], 422);
@@ -343,6 +351,22 @@ class EventController extends Controller
                 'total' => $orders->total(),
             ],
         ]);
+    }
+
+    /**
+     * Products are not organized by group in the UI, but group access still
+     * drives permissions: use the first group this user can edit.
+     */
+    private function defaultGroupIdFor(User $user): ?int
+    {
+        if ($user->isSuperAdmin()) {
+            return Group::orderBy('id')->value('id');
+        }
+
+        return $user->groups()
+            ->wherePivotIn('permission', ['edit', 'manage'])
+            ->orderBy('groups.id')
+            ->value('groups.id');
     }
 
     private function extractYoutubeVideoId(string $url): ?string
