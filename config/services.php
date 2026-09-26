@@ -36,7 +36,7 @@ return [
     ],
 
     'stripe' => [
-        // Money is routed per event/product to one of four Stripe accounts.
+        // Money is routed per event/product to one of three Stripe accounts.
         // 'cafeteria' keeps the legacy STRIPE_* envs so existing deploys keep working.
         'accounts' => [
             'cafeteria' => [
@@ -55,12 +55,6 @@ return [
                 'key' => env('STRIPE_EVENTOS_KEY', env('STRIPE_KEY_TAQUILLA_VIRTUAL')),
                 'secret' => env('STRIPE_EVENTOS_SECRET', env('STRIPE_SECRET_TAQUILLA_VIRTUAL')),
                 'webhook_secret' => env('STRIPE_EVENTOS_WEBHOOK_SECRET', env('STRIPE_WEBHOOK_SECRET_TAQUILLA_VIRTUAL')),
-            ],
-            // Tiendita — the store account; every product (kind = product) sells here.
-            'tiendita' => [
-                'key' => env('STRIPE_TIENDITA_KEY'),
-                'secret' => env('STRIPE_TIENDITA_SECRET'),
-                'webhook_secret' => env('STRIPE_TIENDITA_WEBHOOK_SECRET'),
             ],
         ],
         'default_account' => env('STRIPE_DEFAULT_ACCOUNT', 'cafeteria'),

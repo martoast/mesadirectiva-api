@@ -30,7 +30,7 @@ class ProductTest extends TestCase
         Sanctum::actingAs($this->admin);
     }
 
-    public function test_product_is_forced_onto_tiendita_without_a_date(): void
+    public function test_product_is_forced_onto_cafeteria_without_a_date(): void
     {
         $response = $this->postJson('/events', [
             'kind' => 'product',
@@ -43,12 +43,21 @@ class ProductTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('event.kind', 'product')
-            ->assertJsonPath('event.stripe_account', 'tiendita')
+            ->assertJsonPath('event.stripe_account', 'cafeteria')
+            ->assertJsonPath('event.checkout_settings.require_student_fields', true)
+            ->assertJsonPath('event.checkout_settings.require_attendee_note', false)
             ->assertJsonPath('event.seating_type', 'general_admission')
             ->assertJsonPath('event.ends_at', null);
     }
 
-    public function test_events_still_require_dates_and_cannot_use_tiendita(): void
+    public function test_product_without_group_gets_a_default_group(): void
+    {
+        $this->postJson('/events', ['kind' => 'product', 'name' => 'Termo'])
+            ->assertCreated()
+            ->assertJsonPath('event.group.id', $this->group->id);
+    }
+
+    public function test_events_still_require_dates(): void
     {
         $this->postJson('/events', [
             'name' => 'Kermés',
@@ -60,17 +69,17 @@ class ProductTest extends TestCase
             'group_id' => $this->group->id,
             'starts_at' => now()->addDay()->toIso8601String(),
             'ends_at' => now()->addDays(2)->toIso8601String(),
-            'stripe_account' => 'tiendita',
+            'stripe_account' => 'no-existe',
         ])->assertUnprocessable()->assertJsonValidationErrors(['stripe_account']);
     }
 
-    public function test_product_cannot_be_moved_off_tiendita(): void
+    public function test_product_cannot_be_moved_off_cafeteria(): void
     {
         $product = $this->makeProduct();
 
-        $this->putJson("/events/{$product->slug}", ['stripe_account' => 'cafeteria'])->assertOk();
+        $this->putJson("/events/{$product->slug}", ['stripe_account' => 'eventos'])->assertOk();
 
-        $this->assertSame('tiendita', $product->fresh()->stripe_account);
+        $this->assertSame('cafeteria', $product->fresh()->stripe_account);
     }
 
     public function test_admin_and_public_lists_filter_by_kind(): void
@@ -145,7 +154,7 @@ class ProductTest extends TestCase
             'group_id' => $this->group->id,
             'starts_at' => now(),
             'ends_at' => null,
-            'stripe_account' => 'tiendita',
+            'stripe_account' => 'cafeteria',
             'status' => 'draft',
             'created_by' => $this->admin->id,
         ], $overrides));

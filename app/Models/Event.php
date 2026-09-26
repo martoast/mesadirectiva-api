@@ -16,8 +16,15 @@ class Event extends Model
     public const KIND_EVENT = 'event';
     public const KIND_PRODUCT = 'product';
 
-    // Every product sells through the store's own Stripe account.
-    public const PRODUCT_STRIPE_ACCOUNT = 'tiendita';
+    // Products (food, promo items, uniforms) are sold through Cafetería.
+    public const PRODUCT_STRIPE_ACCOUNT = 'cafeteria';
+
+    // Products always ask for the student's name + clave; notes stay optional.
+    public const PRODUCT_CHECKOUT_SETTINGS = [
+        'collect_student_fields' => true,
+        'require_student_fields' => true,
+        'require_attendee_note' => false,
+    ];
 
     protected $fillable = [
         'slug',

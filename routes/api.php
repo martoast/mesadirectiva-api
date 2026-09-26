@@ -71,7 +71,7 @@ Route::post('/checkout/create-session', [CheckoutController::class, 'createSessi
 // legacy alias for the cafeteria account until Stripe dashboards are updated.
 Route::post('/webhooks/stripe', [WebhookController::class, 'handleStripe']);
 Route::post('/webhooks/stripe/{account}', [WebhookController::class, 'handleStripe'])
-    ->whereIn('account', ['cafeteria', 'rifa', 'eventos', 'tiendita']);
+    ->whereIn('account', ['cafeteria', 'rifa', 'eventos']);
 
 /*
 |--------------------------------------------------------------------------
