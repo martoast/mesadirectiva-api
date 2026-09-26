@@ -14,15 +14,35 @@ class StoreEventRequest extends FormRequest
     /**
      * Event creation is pinned to Tijuana time — the timezone selector was
      * removed from the UI to avoid errors, and any client value is overridden.
+     *
+     * Products have no date or venue: they go on sale when created, always
+     * sell through Tiendita, and use ticket tiers as their variants.
      */
     protected function prepareForValidation(): void
     {
         $this->merge(['timezone' => 'America/Tijuana']);
+
+        if ($this->isProduct()) {
+            $this->merge([
+                'starts_at' => now()->toIso8601String(),
+                'stripe_account' => \App\Models\Event::PRODUCT_STRIPE_ACCOUNT,
+                'seating_type' => 'general_admission',
+            ]);
+        }
+    }
+
+    private function isProduct(): bool
+    {
+        return $this->input('kind') === \App\Models\Event::KIND_PRODUCT;
     }
 
     public function rules(): array
     {
+        $isProduct = $this->isProduct();
+
         return [
+            'kind' => 'sometimes|in:event,product',
+
             // Core Info (required)
             'group_id' => 'required|exists:groups,id',
             'name' => 'required|string|max:255',
@@ -30,8 +50,9 @@ class StoreEventRequest extends FormRequest
             'image' => 'nullable|url|max:2000',
 
             // Date/Time (required)
-            'starts_at' => 'required|date|after_or_equal:now',
-            'ends_at' => 'required|date|after:starts_at',
+            'starts_at' => $isProduct ? 'required|date' : 'required|date|after_or_equal:now',
+            // For products this is the optional "available until" date
+            'ends_at' => $isProduct ? 'nullable|date|after:starts_at' : 'required|date|after:starts_at',
             'timezone' => 'sometimes|string|timezone',
 
             // Location
@@ -54,7 +75,7 @@ class StoreEventRequest extends FormRequest
             'reservation_minutes' => 'sometimes|integer|min:5|max:60',
 
             // Stripe account routing
-            'stripe_account' => 'sometimes|in:cafeteria,rifa,eventos',
+            'stripe_account' => $isProduct ? 'in:tiendita' : 'sometimes|in:cafeteria,rifa,eventos',
 
             // Checkout field configuration
             'checkout_settings' => 'nullable|array',

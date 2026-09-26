@@ -10,6 +10,21 @@ See "Shipped" at the bottom and `git log` for detail — nothing left to do ther
 
 ## Open
 
+### 0. Products + Tiendita — needs Tiendita keys before it can go live (branch `feature/products`)
+Products are events with `kind = 'product'` (migration `2026_09_25_000001`): variants are ticket
+tiers, `ends_at` is an optional "available until" (now nullable), no date/venue. Every product is
+forced onto the new 4th account `tiendita` (StoreEventRequest + EventController::update) and gets a
+plain receipt email (`OrderReceipt`, no PDF/QR) instead of `OrderTickets`. `GET /events` defaults to
+`kind=event`; pass `kind=product` for the store list. `/public/events` accepts an optional `kind`.
+To launch:
+- [ ] Set `STRIPE_TIENDITA_KEY` / `STRIPE_TIENDITA_SECRET` / `STRIPE_TIENDITA_WEBHOOK_SECRET` in DO
+- [ ] Register the live webhook `…/webhooks/stripe/tiendita` (checkout.session.completed,
+      payment_intent.payment_failed, charge.refunded) in the Tiendita dashboard — replaces the
+      "stray" endpoint noted below
+- [ ] Deploy + migrate; publishing a product before the keys exist returns a clear 422
+- [ ] Decide what to do with "Uniformes de Entrenamiento" (live event on `cafeteria` with real
+      orders). Not converted automatically.
+
 ### 1. No LIVE smoke test per Stripe account
 Multi-Stripe is live but never verified end-to-end with real money. Do one live
 purchase + refund on each of `cafeteria`, `rifa`, `eventos`, confirming order

@@ -479,7 +479,8 @@ class CheckoutController extends Controller
     private function finalizeCheckout(Event $event, Order $order, array $lineItems, ?string $reservationToken = null): JsonResponse
     {
         $successUrl = config('app.frontend_url')
-            . "/app/events/{$event->slug}/checkout-success?order={$order->order_number}";
+            . "/app/events/{$event->slug}/checkout-success?order={$order->order_number}"
+            . ($event->isProduct() ? '&kind=product' : '');
         $cancelUrl = config('app.frontend_url') . "/app/events/{$event->slug}";
 
         $metadata = [
@@ -520,7 +521,7 @@ class CheckoutController extends Controller
     public function showOrder(string $orderNumber): JsonResponse
     {
         $order = Order::where('order_number', $orderNumber)
-            ->with(['event:id,name,slug,starts_at,ends_at,timezone,location_type,location', 'items'])
+            ->with(['event:id,kind,name,slug,starts_at,ends_at,timezone,location_type,location', 'items'])
             ->firstOrFail();
 
         return response()->json([

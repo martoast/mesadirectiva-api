@@ -25,7 +25,7 @@ class UpdateEventRequest extends FormRequest
 
             // Date/Time
             'starts_at' => 'sometimes|date',
-            'ends_at' => 'sometimes|date|after:starts_at',
+            'ends_at' => 'sometimes|nullable|date|after:starts_at',
             'timezone' => 'sometimes|string|timezone',
 
             // Location

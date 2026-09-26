@@ -23,7 +23,9 @@ class EventController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Events and products share the table; each admin list asks for its own kind.
         $query = Event::accessibleBy($request->user())
+            ->ofKind($request->get('kind', Event::KIND_EVENT))
             ->with('group')
             ->orderBy('starts_at', 'desc');
 
@@ -87,6 +89,14 @@ class EventController extends Controller
 
         $data = $request->validated();
 
+        if ($event->isProduct()) {
+            // Products always sell through Tiendita and have no seating.
+            unset($data['stripe_account'], $data['seating_type']);
+        } elseif (array_key_exists('ends_at', $data) && $data['ends_at'] === null) {
+            // Only products may leave the end date empty.
+            unset($data['ends_at']);
+        }
+
         // Stripe product/price ids are account-scoped: if the event moves to a
         // different account, drop them so publish() recreates them there.
         if (isset($data['stripe_account']) && $data['stripe_account'] !== $event->stripe_account) {
@@ -129,7 +139,15 @@ class EventController extends Controller
 
         // Create Stripe product and price if not exists
         if (!$event->stripe_product_id) {
-            $stripeData = $this->stripeService->forEvent($event)->createEventProduct($event);
+            try {
+                $stripe = $this->stripeService->forEvent($event);
+                $stripeData = $stripe->createEventProduct($event);
+            } catch (\InvalidArgumentException $e) {
+                // Account keys missing (e.g. Tiendita before its env vars are set)
+                return response()->json([
+                    'message' => "La cuenta de Stripe '{$event->stripe_account}' no está configurada todavía.",
+                ], 422);
+            }
             $event->update([
                 'stripe_product_id' => $stripeData['product_id'],
                 'stripe_price_id' => $stripeData['price_id'],
